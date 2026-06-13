@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Admin\Api\AuthController;
 use App\Http\Controllers\Admin\Api\UserController;
 use App\Http\Controllers\Admin\Api\CustomerController;
+use App\Http\Controllers\Admin\Api\ProductController;
 
 // Rute Halaman Depan E-Commerce (React Customer App)
 Route::get('/', function () {
@@ -23,6 +24,11 @@ Route::prefix('adminv1/api')->group(function () {
         
         // CRUD Customer (Dapat diakses oleh admin & staff)
         Route::apiResource('/customers', CustomerController::class);
+
+        Route::get('/categories/tree', [ProductController::class, 'categories']);
+        Route::post('/products/{id}/mutate-stock', [ProductController::class, 'mutateStock']);
+        Route::post('/products/upload', [ProductController::class, 'upload']);
+        Route::apiResource('/products', ProductController::class);
     });
 });
 

@@ -51,7 +51,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
                             <span>Favorit ({isWishlist ? product.sold + 1 : product.sold})</span>
                         </button>
                         <span className="text-slate-300">|</span>
-                        <button className="flex items-center space-x-1.5 hover:text-blue-600 transition cursor-pointer">
+                        <button className="flex items-center space-x-1.5 hover:text-red-600 transition cursor-pointer">
                             <Share2 size={15} />
                             <span>Bagikan</span>
                         </button>
@@ -62,7 +62,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
                 <div className="w-full md:w-[55%] p-6 md:p-8 flex flex-col justify-between max-h-[80vh] md:max-h-[600px] overflow-y-auto">
                     <div>
                         {/* Category Tag */}
-                        <span className="bg-blue-100 text-blue-800 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-md uppercase mb-2.5 inline-block">
+                        <span className="bg-red-100 text-red-800 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-md uppercase mb-2.5 inline-block">
                             {product.category}
                         </span>
 
@@ -84,9 +84,9 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
                         </div>
 
                         {/* Price Area */}
-                        <div className="bg-gradient-to-r from-blue-50 to-indigo-50/30 rounded-xl p-4 mb-5 border border-blue-100/50 flex flex-col justify-center">
+                        <div className="bg-linear-to-r from-red-50 to-red-50/10 rounded-xl p-4 mb-5 border border-red-100/50 flex flex-col justify-center">
                             <div className="flex items-baseline space-x-2.5">
-                                <span className="text-xl md:text-2xl font-black text-blue-700">
+                                <span className="text-xl md:text-2xl font-black text-red-600">
                                     Rp {(product.price).toLocaleString('id-ID')}
                                 </span>
                                 {product.discount > 0 && (
@@ -138,7 +138,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
                                             onClick={() => setSelectedVariant(v)}
                                             className={`px-4 py-1.5 text-xs font-bold rounded-lg border transition duration-200 cursor-pointer ${
                                                 selectedVariant === v
-                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20'
+                                                    ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                                                     : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                                             }`}
                                         >
@@ -176,7 +176,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
                     <div className="flex items-center gap-3 mt-4 pt-4 border-t border-slate-100">
                         <button
                             onClick={handleAddToCartClick}
-                            className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-blue-500/20 transition duration-300 flex items-center justify-center space-x-2 cursor-pointer"
+                            className="flex-1 bg-linear-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-red-500/20 transition duration-300 flex items-center justify-center space-x-2 cursor-pointer"
                         >
                             <ShoppingCart size={18} className="fill-white" />
                             <span>Tambah ke Keranjang</span>

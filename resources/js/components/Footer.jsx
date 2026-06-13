@@ -23,9 +23,9 @@ const TwitterIcon = ({ size = 16, className = "" }) => (
 
 export default function Footer() {
     return (
-        <footer className="bg-slate-900 text-slate-300">
+        <footer className="bg-zinc-900 text-slate-300">
             {/* Value Proposition Bar */}
-            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 py-6 border-b border-slate-800 text-white">
+            <div className="bg-linear-to-r from-red-600 to-red-950 py-6 border-b border-slate-800 text-white">
                 <div className="max-w-[1200px] mx-auto px-4 md:px-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-center md:text-left">
                     <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4">
                         <div className="bg-white/10 p-3 rounded-full">
@@ -33,7 +33,7 @@ export default function Footer() {
                         </div>
                         <div>
                             <h4 className="font-bold text-sm">Jaminan Keamanan 100%</h4>
-                            <p className="text-xs text-blue-100 mt-0.5">Semua transaksi diverifikasi oleh staf ahli kami secara manual.</p>
+                            <p className="text-xs text-red-100 mt-0.5">Semua transaksi diverifikasi oleh staf ahli kami secara manual.</p>
                         </div>
                     </div>
                     <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4">
@@ -42,7 +42,7 @@ export default function Footer() {
                         </div>
                         <div>
                             <h4 className="font-bold text-sm">Produk Bergaransi & Original</h4>
-                            <p className="text-xs text-blue-100 mt-0.5">Jaminan keaslian onderdil atau uang kembali penuh.</p>
+                            <p className="text-xs text-red-100 mt-0.5">Jaminan keaslian onderdil atau uang kembali penuh.</p>
                         </div>
                     </div>
                     <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4">
@@ -51,7 +51,7 @@ export default function Footer() {
                         </div>
                         <div>
                             <h4 className="font-bold text-sm">Layanan Pelanggan Responsif</h4>
-                            <p className="text-xs text-blue-100 mt-0.5">Staf support WhatsApp kami siap melayani Anda 24/7 jam kerja.</p>
+                            <p className="text-xs text-red-100 mt-0.5">Staf support WhatsApp kami siap melayani Anda 24/7 jam kerja.</p>
                         </div>
                     </div>
                 </div>
@@ -110,13 +110,13 @@ export default function Footer() {
                 <div>
                     <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">Ikuti Media Sosial Kami</h5>
                     <div className="flex items-center space-x-3 mb-6">
-                        <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition">
+                        <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-600 hover:text-white transition">
                             <FacebookIcon size={16} />
                         </a>
                         <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-pink-600 hover:text-white transition">
                             <InstagramIcon size={16} />
                         </a>
-                        <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-400 hover:text-white transition">
+                        <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition">
                             <TwitterIcon size={16} />
                         </a>
                         <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 hover:text-white transition">

@@ -5,7 +5,8 @@ import Categories from './Categories';
 import FlashSale from './FlashSale';
 import ProductSection from './ProductSection';
 import CartDrawer from './CartDrawer';
-import ProductDetailModal from './ProductDetailModal';
+import ProductDetailPage from './ProductDetailPage';
+import CheckoutPage from './CheckoutPage';
 import Footer from './Footer';
 
 // Data produk otomotif premium Putri Jaya Mobil
@@ -220,6 +221,8 @@ export default function App() {
     const [selectedCategory, setSelectedCategory] = useState('Semua');
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isCheckoutActive, setIsCheckoutActive] = useState(false);
+    const [lastOrder, setLastOrder] = useState(null);
 
     // Load cart dari localStorage jika ada
     useEffect(() => {
@@ -280,9 +283,15 @@ export default function App() {
     };
 
     const handleCheckout = () => {
-        alert('Terima kasih! Checkout berhasil (Simulasi). Kami akan menghubungi Anda melalui WhatsApp.');
-        saveCart([]);
+        setIsCheckoutActive(true);
         setIsCartOpen(false);
+        setSelectedProduct(null); // Tutup detail produk jika sedang terbuka
+    };
+
+    const handleOrderSuccess = (orderData) => {
+        setLastOrder(orderData);
+        setIsCheckoutActive(false);
+        saveCart([]); // Kosongkan keranjang belanja
     };
 
     return (
@@ -297,26 +306,94 @@ export default function App() {
 
             <main className="flex-grow pb-12">
                 <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-                    {/* Hero Banner Carousel */}
-                    <HeroCarousel />
+                    {lastOrder ? (
+                        <div className="max-w-xl mx-auto bg-white rounded-2xl border border-slate-100 p-6 md:p-8 text-center space-y-6 shadow-xs animate-in fade-in zoom-in-95 duration-300 my-8">
+                            <div className="h-20 w-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 stroke-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                            <div className="space-y-2">
+                                <h2 className="text-xl md:text-2xl font-black text-slate-800 uppercase tracking-tight">Pesanan Berhasil Dibayar!</h2>
+                                <p className="text-xs text-slate-400 font-semibold">Terima kasih atas pembayaran Anda melalui Midtrans. Pesanan sedang kami proses.</p>
+                            </div>
+                            
+                            <div className="bg-slate-50 rounded-xl p-4.5 text-left text-xs font-semibold text-slate-655 border border-slate-100 space-y-3">
+                                <div className="flex justify-between border-b border-slate-100/60 pb-2">
+                                    <span className="text-slate-400">Penerima</span>
+                                    <span className="text-slate-800 font-bold">{lastOrder.address.name}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-slate-100/60 pb-2">
+                                    <span className="text-slate-400">No. Telepon</span>
+                                    <span className="text-slate-800 font-bold">{lastOrder.address.phone}</span>
+                                </div>
+                                <div className="flex justify-between border-b border-slate-100/60 pb-2">
+                                    <span className="text-slate-400">Jasa Pengiriman</span>
+                                    <span className="text-slate-800 font-bold">{lastOrder.courier.name} ({lastOrder.courier.service})</span>
+                                </div>
+                                <div className="flex justify-between border-b border-slate-100/60 pb-2">
+                                    <span className="text-slate-400">Metode Pembayaran</span>
+                                    <span className="text-slate-800 font-bold">{lastOrder.paymentMethod}</span>
+                                </div>
+                                <div className="flex justify-between pt-1 text-sm font-extrabold text-slate-800">
+                                    <span>Total Pembayaran</span>
+                                    <span className="text-red-650">Rp {lastOrder.total.toLocaleString('id-ID')}</span>
+                                </div>
+                            </div>
 
-                    {/* Category Grid */}
-                    <Categories 
-                        selectedCategory={selectedCategory}
-                        setSelectedCategory={setSelectedCategory}
-                    />
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button
+                                    onClick={() => setLastOrder(null)}
+                                    className="flex-1 bg-linear-to-r from-red-650 via-red-600 to-red-950 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md hover:shadow-red-500/20 transition cursor-pointer text-xs uppercase tracking-wider"
+                                >
+                                    Belanja Lagi
+                                </button>
+                                <a
+                                    href={`https://wa.me/6281234567890?text=Halo%20Putri%20Jaya%20Mobil,%20saya%20sudah%20melakukan%20pembayaran%20melalui%20Midtrans%20sebesar%20Rp%20${lastOrder.total.toLocaleString('id-ID')}%20untuk%20pesanan%20saya.%20Mohon%20segera%20diproses.`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md hover:shadow-emerald-500/10 transition flex items-center justify-center space-x-2 text-xs uppercase tracking-wider"
+                                >
+                                    Konfirmasi ke WA
+                                </a>
+                            </div>
+                        </div>
+                    ) : isCheckoutActive ? (
+                        <CheckoutPage 
+                            cart={cart}
+                            onBack={() => setIsCheckoutActive(false)}
+                            onOrderSuccess={handleOrderSuccess}
+                        />
+                    ) : selectedProduct ? (
+                        <ProductDetailPage 
+                            product={selectedProduct} 
+                            onBack={() => setSelectedProduct(null)} 
+                            onAddToCart={handleAddToCart}
+                        />
+                    ) : (
+                        <>
+                            {/* Hero Banner Carousel */}
+                            <HeroCarousel />
 
-                    {/* Flash Sale Banner */}
-                    <FlashSale onProductClick={setSelectedProduct} />
+                            {/* Category Grid */}
+                            <Categories 
+                                selectedCategory={selectedCategory}
+                                setSelectedCategory={setSelectedCategory}
+                            />
 
-                    {/* Products Section with filter & search */}
-                    <ProductSection 
-                        products={products}
-                        searchQuery={searchQuery}
-                        selectedCategory={selectedCategory}
-                        onProductClick={setSelectedProduct}
-                        onAddToCart={handleAddToCart}
-                    />
+                            {/* Flash Sale Banner */}
+                            <FlashSale onProductClick={setSelectedProduct} />
+
+                            {/* Products Section with filter & search */}
+                            <ProductSection 
+                                products={products}
+                                searchQuery={searchQuery}
+                                selectedCategory={selectedCategory}
+                                onProductClick={setSelectedProduct}
+                                onAddToCart={handleAddToCart}
+                            />
+                        </>
+                    )}
                 </div>
             </main>
 
@@ -332,18 +409,6 @@ export default function App() {
                 onRemoveItem={handleRemoveFromCart}
                 onCheckout={handleCheckout}
             />
-
-            {/* Product Quick View Detail Modal */}
-            {selectedProduct && (
-                <ProductDetailModal 
-                    product={selectedProduct}
-                    onClose={() => setSelectedProduct(null)}
-                    onAddToCart={(prod, qty, variant) => {
-                        handleAddToCart(prod, qty, variant);
-                        setSelectedProduct(null); // Tutup modal setelah tambah ke keranjang
-                    }}
-                />
-            )}
         </div>
     );
 }

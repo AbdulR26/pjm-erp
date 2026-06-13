@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, UsersRound, LogOut, Car, Shield, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, UsersRound, LogOut, Car, Shield, Menu, X, Package } from 'lucide-react';
 
 export default function Layout({ user, currentTab, setTab, onLogout, children }) {
     const isAdmin = user.roles.includes('admin');
@@ -7,6 +7,7 @@ export default function Layout({ user, currentTab, setTab, onLogout, children })
 
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, visible: true },
+        { id: 'products', label: 'Manajemen Produk', icon: Package, visible: true },
         { id: 'users', label: 'Manajemen Staff', icon: Shield, visible: isAdmin },
         { id: 'customers', label: 'Manajemen Customer', icon: UsersRound, visible: true },
     ];
@@ -19,37 +20,37 @@ export default function Layout({ user, currentTab, setTab, onLogout, children })
     const NavigationContent = () => (
         <>
             {/* Sidebar Brand Header */}
-            <div className="h-16 flex items-center px-6 bg-slate-950 border-b border-slate-800/60 shrink-0">
+            <div className="h-16 flex items-center px-6 bg-zinc-950 border-b border-zinc-800/60 shrink-0">
                 <div className="flex items-center space-x-2.5">
-                    <div className="bg-blue-600 text-white p-1.5 rounded-lg">
+                    <div className="bg-red-600 text-white p-1.5 rounded-lg">
                         <Car className="h-5 w-5" />
                     </div>
                     <div>
                         <span className="font-extrabold text-white tracking-wide text-sm block">PJM Admin</span>
-                        <span className="text-[10px] text-blue-400 font-bold uppercase tracking-widest block -mt-1">Putri Jaya Mobil</span>
+                        <span className="text-[10px] text-red-400 font-bold uppercase tracking-widest block -mt-1">Putri Jaya Mobil</span>
                     </div>
                 </div>
                 {/* Mobile close button inside sidebar */}
                 <button
                     onClick={() => setIsMobileOpen(false)}
-                    className="md:hidden ml-auto p-1 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg cursor-pointer"
+                    className="md:hidden ml-auto p-1 text-slate-400 hover:text-white hover:bg-zinc-850 rounded-lg cursor-pointer"
                 >
                     <X size={18} />
                 </button>
             </div>
 
             {/* User Profile Summary in Sidebar */}
-            <div className="px-4 py-6 border-b border-slate-800/60 bg-slate-950/20 shrink-0">
+            <div className="px-4 py-6 border-b border-zinc-800/60 bg-zinc-950/20 shrink-0">
                 <div className="flex items-center space-x-3">
-                    <div className="h-10 w-10 bg-linear-to-tr from-blue-600 to-indigo-700 rounded-full flex items-center justify-center font-bold text-white shadow-md">
+                    <div className="h-10 w-10 bg-linear-to-tr from-red-600 to-red-950 rounded-full flex items-center justify-center font-bold text-white shadow-md">
                         {user.name.charAt(0)}
                     </div>
                     <div className="flex-1 overflow-hidden">
                         <span className="text-sm font-bold text-white block truncate">{user.name}</span>
                         <span className={`inline-block text-[9px] font-black px-2 py-0.5 rounded-md mt-1 uppercase tracking-wider ${
                             isAdmin 
-                                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' 
-                                : 'bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                                ? 'bg-red-500/20 text-red-300 border border-red-500/30' 
+                                : 'bg-zinc-500/20 text-zinc-300 border border-zinc-500/30'
                         }`}>
                             {isAdmin ? 'Admin' : 'Staff'}
                         </span>
@@ -69,8 +70,8 @@ export default function Layout({ user, currentTab, setTab, onLogout, children })
                             onClick={() => handleTabChange(item.id)}
                             className={`w-full flex items-center space-x-3 px-4 py-3 text-sm font-bold rounded-xl transition duration-200 cursor-pointer ${
                                 isActive 
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                                    : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                                    ? 'bg-red-600 text-white shadow-lg shadow-red-600/20' 
+                                    : 'text-slate-400 hover:bg-zinc-800/50 hover:text-slate-200'
                             }`}
                         >
                             <Icon size={18} className={isActive ? 'text-white' : 'text-slate-500'} />
@@ -81,10 +82,10 @@ export default function Layout({ user, currentTab, setTab, onLogout, children })
             </nav>
 
             {/* Sidebar Bottom (Logout) */}
-            <div className="p-4 border-t border-slate-800/60 bg-slate-950/20 shrink-0">
+            <div className="p-4 border-t border-zinc-800/60 bg-zinc-950/20 shrink-0">
                 <button
                     onClick={onLogout}
-                    className="w-full flex items-center justify-center space-x-2 bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 font-bold py-2.5 px-4 rounded-xl transition duration-200 border border-slate-700/50 hover:border-rose-900/50 cursor-pointer"
+                    className="w-full flex items-center justify-center space-x-2 bg-zinc-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 font-bold py-2.5 px-4 rounded-xl transition duration-200 border border-zinc-700/50 hover:border-rose-900/50 cursor-pointer"
                 >
                     <LogOut size={16} />
                     <span>Keluar Sesi</span>
@@ -96,7 +97,7 @@ export default function Layout({ user, currentTab, setTab, onLogout, children })
     return (
         <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
             {/* Desktop Sidebar (Persistent) */}
-            <aside className="hidden md:flex w-64 bg-slate-900 text-slate-300 flex-col justify-between shrink-0 border-r border-slate-800 shadow-xl h-full">
+            <aside className="hidden md:flex w-64 bg-zinc-900 text-zinc-300 flex-col justify-between shrink-0 border-r border-zinc-800 shadow-xl h-full">
                 <NavigationContent />
             </aside>
 
@@ -109,7 +110,7 @@ export default function Layout({ user, currentTab, setTab, onLogout, children })
                         className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-200"
                     />
                     {/* Mobile Drawer */}
-                    <aside className="fixed top-0 bottom-0 left-0 w-64 bg-slate-900 text-slate-300 flex flex-col justify-between border-r border-slate-800 shadow-2xl z-50 md:hidden animate-in slide-in-from-left duration-200 h-full">
+                    <aside className="fixed top-0 bottom-0 left-0 w-64 bg-zinc-900 text-zinc-300 flex flex-col justify-between border-r border-zinc-800 shadow-2xl z-50 md:hidden animate-in slide-in-from-left duration-200 h-full">
                         <NavigationContent />
                     </aside>
                 </>
@@ -130,6 +131,7 @@ export default function Layout({ user, currentTab, setTab, onLogout, children })
                         </button>
                         <h2 className="text-sm sm:text-base md:text-lg font-black text-slate-800 uppercase tracking-wider truncate max-w-[180px] sm:max-w-none">
                             {currentTab === 'dashboard' && 'Dashboard Utama'}
+                            {currentTab === 'products' && 'Manajemen Produk & Inventaris'}
                             {currentTab === 'users' && 'Manajemen Staff & Admin'}
                             {currentTab === 'customers' && 'Manajemen Database Customer'}
                         </h2>
@@ -139,7 +141,7 @@ export default function Layout({ user, currentTab, setTab, onLogout, children })
                             <span className="text-sm font-bold text-slate-800 block leading-tight">{user.name}</span>
                             <span className="text-xs text-slate-400 font-semibold">{user.email}</span>
                         </div>
-                        <div className="h-9 w-9 bg-slate-100 rounded-full flex items-center justify-center font-bold text-blue-600 border border-slate-200 shadow-xs shrink-0">
+                        <div className="h-9 w-9 bg-slate-100 rounded-full flex items-center justify-center font-bold text-red-600 border border-slate-200 shadow-xs shrink-0">
                             {user.name.charAt(0)}
                         </div>
                     </div>

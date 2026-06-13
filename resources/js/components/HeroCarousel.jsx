@@ -60,7 +60,7 @@ export default function HeroCarousel() {
                         }`}
                     >
                         {/* Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-950/80 via-blue-900/40 to-transparent z-10" />
+                        <div className="absolute inset-0 bg-linear-to-r from-red-950/90 via-red-950/45 to-transparent z-10" />
                         <img
                             src={banner.image}
                             alt={banner.title}
@@ -68,16 +68,16 @@ export default function HeroCarousel() {
                         />
                         {/* Text Content */}
                         <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-12 z-20 max-w-[80%] text-white">
-                            <span className="bg-yellow-400 text-blue-900 text-[10px] md:text-xs font-bold px-2.5 py-1 rounded-full w-max mb-3 uppercase tracking-wider">
+                            <span className="bg-yellow-400 text-black text-[10px] md:text-xs font-bold px-2.5 py-1 rounded-full w-max mb-3 uppercase tracking-wider">
                                 {banner.badge}
                             </span>
                             <h2 className="text-xl md:text-3xl font-extrabold tracking-tight leading-tight mb-2.5 drop-shadow-md">
                                 {banner.title}
                             </h2>
-                            <p className="text-xs md:text-sm text-blue-100 mb-5 leading-relaxed hidden sm:block">
+                            <p className="text-xs md:text-sm text-red-100 mb-5 leading-relaxed hidden sm:block">
                                 {banner.subtitle}
                             </p>
-                            <button className="bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs md:text-sm px-6 py-2.5 rounded-lg w-max shadow-lg hover:shadow-blue-500/25 transition duration-300">
+                            <button className="bg-red-600 hover:bg-red-500 text-white font-semibold text-xs md:text-sm px-6 py-2.5 rounded-lg w-max shadow-lg hover:shadow-red-500/25 transition duration-300">
                                 {banner.buttonText}
                             </button>
                         </div>
@@ -116,7 +116,7 @@ export default function HeroCarousel() {
             <div className="flex flex-row lg:flex-col gap-3 h-full">
                 {/* Side Banner 1 */}
                 <div className="flex-1 relative h-[105px] md:h-[153px] rounded-lg overflow-hidden shadow-md group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-900/90 to-blue-800/40 z-10" />
+                    <div className="absolute inset-0 bg-linear-to-r from-red-800/90 to-red-950/60 z-10" />
                     <img
                         src="https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=400&q=80"
                         alt="Konsultasi Suku Cadang"
@@ -127,13 +127,13 @@ export default function HeroCarousel() {
                         <h3 className="font-bold text-sm md:text-base leading-tight mb-1">
                             Bingung Cari <br className="hidden md:inline" /> Part Number / Seri?
                         </h3>
-                        <p className="text-[10px] text-blue-100 hidden md:block">Kirim foto STNK & part Anda ke WhatsApp kami!</p>
+                        <p className="text-[10px] text-red-100 hidden md:block">Kirim foto STNK & part Anda ke WhatsApp kami!</p>
                     </div>
                 </div>
 
                 {/* Side Banner 2 */}
                 <div className="flex-1 relative h-[105px] md:h-[153px] rounded-lg overflow-hidden shadow-md group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-950/90 to-indigo-800/40 z-10" />
+                    <div className="absolute inset-0 bg-linear-to-r from-red-900/95 to-red-950/65 z-10" />
                     <img
                         src="https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=400&q=80"
                         alt="Spare Parts"
@@ -144,7 +144,7 @@ export default function HeroCarousel() {
                         <h3 className="font-bold text-sm md:text-base leading-tight mb-1">
                             100% Suku Cadang Asli
                         </h3>
-                        <p className="text-[10px] text-indigo-100 hidden md:block">Garansi uang kembali penuh jika palsu.</p>
+                        <p className="text-[10px] text-red-100 hidden md:block">Garansi uang kembali penuh jika palsu.</p>
                     </div>
                 </div>
             </div>

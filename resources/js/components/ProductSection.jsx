@@ -50,7 +50,7 @@ export default function ProductSection({
                                 onClick={() => setSortBy(opt.id)}
                                 className={`px-4 py-2 text-xs md:text-sm font-semibold rounded-md transition duration-200 cursor-pointer ${
                                     sortBy === opt.id
-                                        ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                                        ? 'bg-red-600 text-white shadow-md shadow-red-500/20'
                                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                 }`}
                             >
@@ -62,16 +62,16 @@ export default function ProductSection({
 
                 {/* Filter info */}
                 <div className="text-xs md:text-sm text-slate-500 font-medium">
-                    Menampilkan <span className="text-blue-600 font-bold">{filteredProducts.length}</span> produk 
-                    {selectedCategory !== 'Semua' && <span> di kategori <span className="text-blue-600 font-bold">"{selectedCategory}"</span></span>}
-                    {searchQuery && <span> untuk pencarian <span className="text-blue-600 font-bold">"{searchQuery}"</span></span>}
+                    Menampilkan <span className="text-red-600 font-bold">{filteredProducts.length}</span> produk 
+                    {selectedCategory !== 'Semua' && <span> di kategori <span className="text-red-600 font-bold">"{selectedCategory}"</span></span>}
+                    {searchQuery && <span> untuk pencarian <span className="text-red-600 font-bold">"{searchQuery}"</span></span>}
                 </div>
             </div>
 
             {/* Empty State */}
             {filteredProducts.length === 0 && (
                 <div className="bg-white rounded-lg p-12 shadow-sm border border-slate-100 text-center flex flex-col items-center justify-center">
-                    <div className="h-16 w-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
+                    <div className="h-16 w-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
                         <Info size={32} />
                     </div>
                     <h3 className="text-lg font-bold text-slate-800 mb-1">Produk Tidak Ditemukan</h3>
@@ -86,7 +86,7 @@ export default function ProductSection({
                 {filteredProducts.map((prod) => (
                     <div
                         key={prod.id}
-                        className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1 transition duration-300 flex flex-col justify-between overflow-hidden cursor-pointer group relative"
+                        className="bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-red-500/5 hover:-translate-y-1 transition duration-300 flex flex-col justify-between overflow-hidden cursor-pointer group relative"
                         onClick={() => onProductClick(prod)}
                     >
                         {/* Image area */}
@@ -98,7 +98,7 @@ export default function ProductSection({
                             />
                             {/* Top left badge */}
                             {prod.badge && (
-                                <span className="absolute top-2 left-2 bg-gradient-to-r from-blue-600 to-indigo-700 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-wider">
+                                <span className="absolute top-2 left-2 bg-linear-to-r from-red-600 to-red-950 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-sm uppercase tracking-wider">
                                     {prod.badge}
                                 </span>
                             )}
@@ -116,10 +116,10 @@ export default function ProductSection({
                                     e.stopPropagation(); // Mencegah modal terbuka
                                     onAddToCart(prod, 1);
                                 }}
-                                className="absolute bottom-2 right-2 bg-yellow-400 hover:bg-yellow-500 text-blue-900 p-2.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-110 z-20"
+                                className="absolute bottom-2 right-2 bg-yellow-400 hover:bg-yellow-500 text-red-950 p-2.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition duration-300 hover:scale-110 z-20"
                                 title="Tambah Cepat ke Keranjang"
                             >
-                                <ShoppingCart size={16} className="fill-blue-900" />
+                                <ShoppingCart size={16} className="fill-red-950" />
                             </button>
                         </div>
 
@@ -127,12 +127,12 @@ export default function ProductSection({
                         <div className="p-3.5 flex-1 flex flex-col justify-between">
                             <div>
                                 {/* Category */}
-                                <span className="text-[10px] font-bold text-blue-600 uppercase tracking-widest block mb-1">
+                                <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest block mb-1">
                                     {prod.category}
                                 </span>
                                 
                                 {/* Title */}
-                                <h4 className="text-xs md:text-sm font-bold text-slate-800 line-clamp-2 leading-snug group-hover:text-blue-600 transition mb-2">
+                                <h4 className="text-xs md:text-sm font-bold text-slate-800 line-clamp-2 leading-snug group-hover:text-red-600 transition mb-2">
                                     {prod.name}
                                 </h4>
                             </div>
@@ -140,7 +140,7 @@ export default function ProductSection({
                             <div>
                                 {/* Pricing */}
                                 <div className="flex items-baseline space-x-1.5 mb-1.5">
-                                    <span className="text-sm md:text-base font-extrabold text-blue-700">
+                                    <span className="text-sm md:text-base font-extrabold text-red-600">
                                         Rp {(prod.price).toLocaleString('id-ID')}
                                     </span>
                                 </div>
@@ -173,7 +173,7 @@ export default function ProductSection({
             {/* Load More Button */}
             {filteredProducts.length > 0 && (
                 <div className="flex justify-center mt-10">
-                    <button className="bg-white hover:bg-slate-50 text-blue-600 border border-blue-200 font-bold text-sm px-10 py-3.5 rounded-lg shadow-sm hover:shadow transition duration-200 cursor-pointer">
+                    <button className="bg-white hover:bg-slate-50 text-red-600 border border-red-200 font-bold text-sm px-10 py-3.5 rounded-lg shadow-sm hover:shadow transition duration-200 cursor-pointer">
                         Lihat Lebih Banyak Produk
                     </button>
                 </div>

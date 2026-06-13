@@ -166,7 +166,7 @@ export default function FlashSale({ onProductClick }) {
     return (
         <div className="bg-white rounded-lg mt-4 shadow-sm border border-slate-100 overflow-hidden">
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-700 to-indigo-800 px-5 py-4 flex justify-between items-center text-white">
+            <div className="bg-linear-to-r from-red-600 to-red-950 px-5 py-4 flex justify-between items-center text-white">
                 <div className="flex items-center space-x-3">
                     <div className="flex items-center space-x-1 font-extrabold text-lg md:text-xl tracking-wider uppercase text-yellow-400">
                         <Flame className="fill-yellow-400 animate-bounce" size={22} />
@@ -175,7 +175,7 @@ export default function FlashSale({ onProductClick }) {
                     
                     {/* Countdown Timer */}
                     <div className="flex items-center space-x-1 text-xs md:text-sm font-semibold">
-                        <span className="hidden sm:inline text-blue-100 mr-1">Berakhir dalam:</span>
+                        <span className="hidden sm:inline text-red-100 mr-1">Berakhir dalam:</span>
                         <span className="bg-slate-900 px-2.5 py-1 rounded text-white font-mono shadow-md">
                             {formatNumber(timeLeft.hours)}
                         </span>
@@ -202,7 +202,7 @@ export default function FlashSale({ onProductClick }) {
                     <div
                         key={prod.id}
                         onClick={() => handleProductClick(prod.id)}
-                        className="bg-slate-50/50 hover:bg-white border border-slate-100 rounded-xl p-3 flex flex-col justify-between transition duration-300 hover:shadow-xl hover:shadow-blue-500/5 hover:-translate-y-1 cursor-pointer group"
+                        className="bg-slate-50/50 hover:bg-white border border-slate-100 rounded-xl p-3 flex flex-col justify-between transition duration-300 hover:shadow-xl hover:shadow-red-500/5 hover:-translate-y-1 cursor-pointer group"
                     >
                         {/* Image & Discount */}
                         <div className="relative aspect-square rounded-lg overflow-hidden mb-3.5 bg-slate-100">
@@ -218,7 +218,7 @@ export default function FlashSale({ onProductClick }) {
                         </div>
 
                         {/* Title */}
-                        <h4 className="text-xs md:text-sm font-bold text-slate-800 line-clamp-2 leading-snug mb-2 group-hover:text-blue-600 transition">
+                        <h4 className="text-xs md:text-sm font-bold text-slate-800 line-clamp-2 leading-snug mb-2 group-hover:text-red-600 transition">
                             {prod.name}
                         </h4>
 
@@ -239,7 +239,7 @@ export default function FlashSale({ onProductClick }) {
                             <div className="w-full bg-slate-200 h-3.5 rounded-full overflow-hidden relative flex items-center justify-center">
                                 {/* Fill */}
                                 <div 
-                                    className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-orange-500 to-rose-500 transition-all duration-1000"
+                                    className="absolute left-0 top-0 bottom-0 bg-linear-to-r from-orange-500 to-red-600 transition-all duration-1000"
                                     style={{ width: `${prod.soldPercent}%` }}
                                 />
                                 {/* Label overlay */}

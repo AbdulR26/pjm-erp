@@ -5,11 +5,22 @@ import Layout from './Layout';
 import Dashboard from './Dashboard';
 import UserManagement from './UserManagement';
 import CustomerManagement from './CustomerManagement';
+import ProductManagement from './ProductManagement';
 
 export default function AdminApp() {
     const [user, setUser] = useState(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [currentTab, setCurrentTab] = useState('dashboard');
+
+    // Get initial tab from URL path (lightweight routing)
+    const getInitialTab = () => {
+        const path = window.location.pathname;
+        const segments = path.split('/');
+        const tab = segments[segments.length - 1];
+        const validTabs = ['dashboard', 'products', 'users', 'customers'];
+        return validTabs.includes(tab) ? tab : 'dashboard';
+    };
+
+    const [currentTab, setCurrentTab] = useState(getInitialTab);
 
     // Fetch user profile on load
     const fetchUserProfile = async () => {
@@ -32,6 +43,40 @@ export default function AdminApp() {
         fetchUserProfile();
     }, []);
 
+    // Sync tab state to URL path
+    useEffect(() => {
+        const currentPath = window.location.pathname;
+        const targetPath = `/adminv1/${currentTab}`;
+        if (currentPath !== targetPath) {
+            window.history.pushState(null, '', targetPath);
+        }
+    }, [currentTab]);
+
+    // Handle browser back/forward buttons (popstate)
+    useEffect(() => {
+        const handlePopState = () => {
+            const path = window.location.pathname;
+            const segments = path.split('/');
+            const tab = segments[segments.length - 1];
+            const validTabs = ['dashboard', 'products', 'users', 'customers'];
+            if (validTabs.includes(tab)) {
+                setCurrentTab(tab);
+            } else {
+                setCurrentTab('dashboard');
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    // Role-based route guard: Redirect staff trying to access '/users'
+    useEffect(() => {
+        if (user && currentTab === 'users' && !user.roles.includes('admin')) {
+            setCurrentTab('dashboard');
+        }
+    }, [user, currentTab]);
+
     const handleLogout = async () => {
         try {
             await axios.post('/adminv1/api/logout');
@@ -47,7 +92,7 @@ export default function AdminApp() {
         return (
             <div className="min-h-screen bg-slate-50 flex items-center justify-center">
                 <div className="flex flex-col items-center">
-                    <div className="h-12 w-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <div className="h-12 w-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
                     <p className="mt-4 text-slate-500 font-semibold text-sm">Memuat halaman admin...</p>
                 </div>
             </div>
@@ -61,6 +106,7 @@ export default function AdminApp() {
     return (
         <Layout user={user} currentTab={currentTab} setTab={setCurrentTab} onLogout={handleLogout}>
             {currentTab === 'dashboard' && <Dashboard user={user} setTab={setCurrentTab} />}
+            {currentTab === 'products' && <ProductManagement />}
             {currentTab === 'users' && user.roles.includes('admin') && <UserManagement />}
             {currentTab === 'customers' && <CustomerManagement />}
         </Layout>

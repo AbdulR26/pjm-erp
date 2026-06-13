@@ -29,7 +29,7 @@ export default function CartDrawer({
                 <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col h-full border-l border-slate-100 animate-in slide-in-from-right duration-300">
                     
                     {/* Header */}
-                    <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
+                    <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-linear-to-r from-red-600 to-red-950 text-white">
                         <div className="flex items-center space-x-2.5">
                             <ShoppingBag size={20} />
                             <h3 className="text-base font-extrabold tracking-wide">
@@ -49,7 +49,7 @@ export default function CartDrawer({
                         {cartItems.length === 0 ? (
                             // Empty State
                             <div className="h-full flex flex-col items-center justify-center text-center">
-                                <div className="h-16 w-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
+                                <div className="h-16 w-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
                                     <ShoppingBag size={28} />
                                 </div>
                                 <h4 className="font-bold text-slate-800 mb-1">Keranjang Anda Kosong</h4>
@@ -58,7 +58,7 @@ export default function CartDrawer({
                                 </p>
                                 <button 
                                     onClick={onClose}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-6 py-2.5 rounded-lg transition duration-200 cursor-pointer shadow-md"
+                                    className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-6 py-2.5 rounded-lg transition duration-200 cursor-pointer shadow-md"
                                 >
                                     Mulai Belanja
                                 </button>
@@ -72,7 +72,7 @@ export default function CartDrawer({
                                         className="flex items-start py-4 border-b border-slate-100 last:border-0"
                                     >
                                         {/* Product Image */}
-                                        <div className="h-16 w-16 rounded-lg overflow-hidden flex-shrink-0 border border-slate-100 bg-slate-50">
+                                        <div className="h-16 w-16 rounded-lg overflow-hidden shrink-0 border border-slate-100 bg-slate-50">
                                             <img
                                                 src={item.product.image}
                                                 alt={item.product.name}
@@ -113,7 +113,7 @@ export default function CartDrawer({
                                                     </button>
                                                 </div>
 
-                                                <span className="text-xs md:text-sm font-extrabold text-blue-700">
+                                                <span className="text-xs md:text-sm font-extrabold text-red-600">
                                                     Rp {(item.product.price * item.quantity).toLocaleString('id-ID')}
                                                 </span>
                                             </div>
@@ -148,7 +148,7 @@ export default function CartDrawer({
                                 </div>
                                 <div className="flex justify-between text-sm font-extrabold text-slate-800 pt-2 border-t border-slate-200">
                                     <span>Total Pembayaran</span>
-                                    <span className="text-blue-700 text-base">Rp {totalPrice.toLocaleString('id-ID')}</span>
+                                    <span className="text-red-600 text-base">Rp {totalPrice.toLocaleString('id-ID')}</span>
                                 </div>
                             </div>
 
@@ -156,7 +156,7 @@ export default function CartDrawer({
                             <div className="space-y-3">
                                 <button
                                     onClick={onCheckout}
-                                    className="w-full bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-blue-500/20 transition duration-300 flex items-center justify-center space-x-2 cursor-pointer"
+                                    className="w-full bg-linear-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-red-500/20 transition duration-300 flex items-center justify-center space-x-2 cursor-pointer"
                                 >
                                     <span>Simulasi Checkout Sekarang</span>
                                 </button>

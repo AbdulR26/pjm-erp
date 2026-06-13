@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import { Plus, Search, Edit, Trash2, Shield, X, AlertCircle, CheckCircle, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export default function UserManagement() {
@@ -83,10 +84,22 @@ export default function UserManagement() {
         try {
             if (modalMode === 'create') {
                 await axios.post('/adminv1/api/users', formData);
-                showToast('Akun staff berhasil ditambahkan.', 'success');
+                Swal.fire({
+                    title: 'Berhasil!',
+                    text: 'Akun staff berhasil ditambahkan.',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             } else {
                 await axios.put(`/adminv1/api/users/${selectedUserId}`, formData);
-                showToast('Data staff berhasil diperbarui.', 'success');
+                Swal.fire({
+                    title: 'Berhasil!',
+                    text: 'Data staff berhasil diperbarui.',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
             }
             setIsModalOpen(false);
             fetchUsers();
@@ -94,9 +107,9 @@ export default function UserManagement() {
             if (err.response && err.response.data && err.response.data.errors) {
                 setApiErrors(err.response.data.errors);
             } else if (err.response && err.response.data && err.response.data.message) {
-                showToast(err.response.data.message, 'error');
+                Swal.fire('Error', err.response.data.message, 'error');
             } else {
-                showToast('Terjadi kesalahan data. Coba lagi.', 'error');
+                Swal.fire('Error', 'Terjadi kesalahan data. Coba lagi.', 'error');
             }
         } finally {
             setIsSubmitting(false);
@@ -104,21 +117,34 @@ export default function UserManagement() {
     };
 
     const handleDeleteUser = async (id) => {
-        if (!window.confirm('Apakah Anda yakin ingin menghapus akun staff ini secara permanen?')) return;
-
-        try {
-            const res = await axios.delete(`/adminv1/api/users/${id}`);
-            if (res.data && res.data.status === 'success') {
-                showToast('Akun staff berhasil dihapus.', 'success');
-                fetchUsers();
+        Swal.fire({
+            title: 'Apakah Anda yakin?',
+            text: 'Data staff ini akan dihapus secara permanen!',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#4b5563',
+            confirmButtonText: 'Ya, hapus!',
+            cancelButtonText: 'Batal'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    const res = await axios.delete(`/adminv1/api/users/${id}`);
+                    if (res.data && res.data.status === 'success') {
+                        Swal.fire({
+                            title: 'Terhapus!',
+                            text: 'Akun staff berhasil dihapus.',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                        fetchUsers();
+                    }
+                } catch (err) {
+                    Swal.fire('Error', err.response?.data?.message || 'Gagal menghapus staff.', 'error');
+                }
             }
-        } catch (err) {
-            if (err.response && err.response.data && err.response.data.message) {
-                showToast(err.response.data.message, 'error');
-            } else {
-                showToast('Gagal menghapus staff.', 'error');
-            }
-        }
+        });
     };
 
     // Datatable Sorting handler
@@ -137,8 +163,8 @@ export default function UserManagement() {
             return <ChevronsUpDown size={12} className="text-slate-300 shrink-0" />;
         }
         return sortDirection === 'asc' 
-            ? <ChevronUp size={12} className="text-blue-600 shrink-0" />
-            : <ChevronDown size={12} className="text-blue-600 shrink-0" />;
+            ? <ChevronUp size={12} className="text-red-600 shrink-0" />
+            : <ChevronDown size={12} className="text-red-600 shrink-0" />;
     };
 
     // Filter, sort & paginate data
@@ -215,7 +241,7 @@ export default function UserManagement() {
                 {/* Add button */}
                 <button
                     onClick={handleOpenCreateModal}
-                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl transition duration-200 shadow-md shadow-blue-500/10 flex items-center justify-center space-x-2 text-xs cursor-pointer"
+                    className="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-5 rounded-xl transition duration-200 shadow-md shadow-red-500/10 flex items-center justify-center space-x-2 text-xs cursor-pointer"
                 >
                     <Plus size={16} />
                     <span>Tambah Staff / Admin</span>
@@ -226,7 +252,7 @@ export default function UserManagement() {
             <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs overflow-hidden">
                 {isLoading ? (
                     <div className="py-20 flex flex-col items-center justify-center">
-                        <div className="h-10 w-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                        <div className="h-10 w-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin"></div>
                         <p className="mt-4 text-slate-400 font-semibold text-xs">Memuat data staff...</p>
                     </div>
                 ) : currentEntries.length === 0 ? (
@@ -287,8 +313,8 @@ export default function UserManagement() {
                                         <td className="py-4 px-6">
                                             <span className={`inline-block text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider ${
                                                 user.roles.includes('admin')
-                                                    ? 'bg-indigo-100 text-indigo-800 border border-indigo-200'
-                                                    : 'bg-teal-100 text-teal-800 border border-teal-200'
+                                                    ? 'bg-red-100 text-red-800 border border-red-200'
+                                                    : 'bg-zinc-100 text-zinc-800 border border-zinc-200'
                                             }`}>
                                                 {user.roles.join(', ') || 'staff'}
                                             </span>
@@ -298,7 +324,7 @@ export default function UserManagement() {
                                             <div className="flex items-center justify-center space-x-2.5">
                                                 <button
                                                     onClick={() => handleOpenEditModal(user)}
-                                                    className="p-1.5 bg-blue-50 text-blue-600 border border-blue-100 rounded-lg hover:bg-blue-100 hover:text-blue-700 transition cursor-pointer"
+                                                    className="p-1.5 bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 hover:text-red-700 transition cursor-pointer"
                                                     title="Edit Data"
                                                 >
                                                     <Edit size={14} />
@@ -345,7 +371,7 @@ export default function UserManagement() {
                                     onClick={() => setCurrentPage(pageNum)}
                                     className={`h-8 w-8 rounded-xl flex items-center justify-center transition border cursor-pointer ${
                                         isActive 
-                                            ? 'bg-blue-600 border-blue-600 text-white shadow-xs' 
+                                            ? 'bg-red-600 border-red-600 text-white shadow-xs' 
                                             : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                                     }`}
                                 >
@@ -371,7 +397,7 @@ export default function UserManagement() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
                     <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                         {/* Header */}
-                        <div className="px-6 py-4 bg-linear-to-r from-blue-600 to-indigo-700 text-white flex justify-between items-center">
+                        <div className="px-6 py-4 bg-linear-to-r from-red-600 to-red-950 text-white flex justify-between items-center">
                             <h3 className="font-extrabold text-sm flex items-center space-x-1.5 uppercase tracking-wide">
                                 <Shield size={16} />
                                 <span>{modalMode === 'create' ? 'Tambah Staff / Admin Baru' : 'Edit Data Staff'}</span>
@@ -392,7 +418,7 @@ export default function UserManagement() {
                                 <input
                                     type="text"
                                     required
-                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 ${
+                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
                                         apiErrors.name ? 'border-rose-500' : 'border-slate-200'
                                     }`}
                                     placeholder="Masukkan nama lengkap staff"
@@ -410,7 +436,7 @@ export default function UserManagement() {
                                 <input
                                     type="email"
                                     required
-                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 ${
+                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
                                         apiErrors.email ? 'border-rose-500' : 'border-slate-200'
                                     }`}
                                     placeholder="email@pjm.com"
@@ -431,7 +457,7 @@ export default function UserManagement() {
                                 <input
                                     type="password"
                                     required={modalMode === 'create'}
-                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 ${
+                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
                                         apiErrors.password ? 'border-rose-500' : 'border-slate-200'
                                     }`}
                                     placeholder="••••••••"
@@ -447,7 +473,7 @@ export default function UserManagement() {
                             <div className="space-y-1">
                                 <label className="text-slate-400 font-bold uppercase tracking-wider">Role Akses</label>
                                 <select
-                                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 bg-white"
+                                    className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 bg-white"
                                     value={formData.role}
                                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                                 >
@@ -468,7 +494,7 @@ export default function UserManagement() {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 px-5 rounded-xl transition duration-200 flex items-center justify-center space-x-1.5 text-xs cursor-pointer"
+                                    className="bg-red-600 hover:bg-red-500 text-white font-bold py-2.5 px-5 rounded-xl transition duration-200 flex items-center justify-center space-x-1.5 text-xs cursor-pointer"
                                 >
                                     {isSubmitting ? (
                                         <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
