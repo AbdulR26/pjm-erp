@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Putri Jaya Mobil - Platform E-Commerce Otomotif Terlengkap & Terpercaya. Beli Mobil Baru, Suku Cadang Asli, Aksesoris Premium, dan Booking Layanan Servis Terbaik.">
-    <title>Putri Jaya Mobil - E-Commerce Otomotif Premium</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>PJM Admin Panel - Putri Jaya Mobil</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,30 +12,39 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     @viteReactRefresh
-    @vite(['resources/css/app.css', 'resources/js/app.jsx'])
+    @vite(['resources/css/app.css', 'resources/js/admin.jsx'])
     
     <style>
         body {
             font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
         }
-        /* Custom scrollbar for premium feel */
+        /* Autofill overrides for inputs */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus, 
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #0f172a inset !important;
+            -webkit-text-fill-color: #f8fafc !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+        /* Custom scrollbars */
         ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
         }
         ::-webkit-scrollbar-track {
             background: #f1f5f9;
         }
         ::-webkit-scrollbar-thumb {
             background: #cbd5e1;
-            border-radius: 4px;
+            border-radius: 3px;
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
     </style>
 </head>
-<body class="bg-[#f5f5f5] text-slate-800 antialiased min-h-screen">
-    <div id="app"></div>
+<body class="h-full text-slate-800 antialiased min-h-screen">
+    <div id="admin-app" class="h-full"></div>
 </body>
 </html>
