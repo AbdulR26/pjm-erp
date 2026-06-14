@@ -6,6 +6,13 @@ import Dashboard from './Dashboard';
 import UserManagement from './UserManagement';
 import CustomerManagement from './CustomerManagement';
 import ProductManagement from './ProductManagement';
+import OrderManagement from './OrderManagement';
+import CategoryManagement from './CategoryManagement';
+import AttributeManagement from './AttributeManagement';
+import StockManagement from './StockManagement';
+import BannersManagement from './BannersManagement';
+import SettingsManagement from './SettingsManagement';
+import VoucherManagement from './VoucherManagement';
 
 export default function AdminApp() {
     const [user, setUser] = useState(null);
@@ -16,7 +23,7 @@ export default function AdminApp() {
         const path = window.location.pathname;
         const segments = path.split('/');
         const tab = segments[segments.length - 1];
-        const validTabs = ['dashboard', 'products', 'users', 'customers'];
+        const validTabs = ['dashboard', 'products', 'users', 'customers', 'orders', 'categories', 'attributes', 'stock', 'banners', 'settings', 'vouchers'];
         return validTabs.includes(tab) ? tab : 'dashboard';
     };
 
@@ -58,7 +65,7 @@ export default function AdminApp() {
             const path = window.location.pathname;
             const segments = path.split('/');
             const tab = segments[segments.length - 1];
-            const validTabs = ['dashboard', 'products', 'users', 'customers'];
+            const validTabs = ['dashboard', 'products', 'users', 'customers', 'orders', 'categories', 'attributes', 'stock', 'banners', 'settings', 'vouchers'];
             if (validTabs.includes(tab)) {
                 setCurrentTab(tab);
             } else {
@@ -105,10 +112,17 @@ export default function AdminApp() {
 
     return (
         <Layout user={user} currentTab={currentTab} setTab={setCurrentTab} onLogout={handleLogout}>
-            {currentTab === 'dashboard' && <Dashboard user={user} setTab={setCurrentTab} />}
-            {currentTab === 'products' && <ProductManagement />}
-            {currentTab === 'users' && user.roles.includes('admin') && <UserManagement />}
-            {currentTab === 'customers' && <CustomerManagement />}
+            {currentTab === 'dashboard'   && <Dashboard user={user} setTab={setCurrentTab} />}
+            {currentTab === 'products'    && <ProductManagement />}
+            {currentTab === 'users'       && user.roles.includes('admin') && <UserManagement />}
+            {currentTab === 'customers'   && <CustomerManagement />}
+            {currentTab === 'orders'      && <OrderManagement />}
+            {currentTab === 'categories'  && <CategoryManagement />}
+            {currentTab === 'attributes'  && <AttributeManagement />}
+            {currentTab === 'stock'       && <StockManagement />}
+            {currentTab === 'vouchers'    && <VoucherManagement />}
+            {currentTab === 'banners'     && <BannersManagement />}
+            {currentTab === 'settings'    && user.roles.includes('admin') && <SettingsManagement />}
         </Layout>
     );
 }

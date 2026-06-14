@@ -1,5 +1,5 @@
-import React from 'react';
-import { Search, ShoppingCart, Bell, HelpCircle, User, Car, MessageSquare, ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, ShoppingCart, Bell, HelpCircle, User, Car, MessageSquare, ChevronDown, LogOut } from 'lucide-react';
 
 const FacebookIcon = ({ size = 16, className = "" }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -15,7 +15,13 @@ const InstagramIcon = ({ size = 16, className = "" }) => (
     </svg>
 );
 
-export default function Header({ cartCount, searchQuery, setSearchQuery, onOpenCart }) {
+export default function Header({ settings = {}, currentUser, cartCount, searchQuery, setSearchQuery, onOpenCart, onLogoClick, onLogout, onLoginClick, onProfileClick }) {
+    const storeName = settings.store_name || 'Putri Jaya Mobil';
+    const facebookLink = settings.social_facebook || '#';
+    const instagramLink = settings.social_instagram || '#';
+    const whatsappNumber = settings.store_whatsapp || '6281234567890';
+    const whatsappLink = `https://wa.me/${whatsappNumber}`;
+
     return (
         <header className="bg-linear-to-r from-red-600 to-red-950 text-white shadow-md sticky top-0 z-40">
             {/* Top Bar (Shopee Style) */}
@@ -30,9 +36,9 @@ export default function Header({ cartCount, searchQuery, setSearchQuery, onOpenC
                         <span className="text-white/30">|</span>
                         <div className="flex items-center space-x-1.5">
                             <span>Ikuti kami di</span>
-                            <a href="#" className="hover:text-red-200 transition"><FacebookIcon size={13} /></a>
-                            <a href="#" className="hover:text-red-200 transition"><InstagramIcon size={13} /></a>
-                            <a href="#" className="hover:text-red-200 transition"><MessageSquare size={13} /></a>
+                            <a href={facebookLink} target="_blank" rel="noopener noreferrer" className="hover:text-red-200 transition"><FacebookIcon size={13} /></a>
+                            <a href={instagramLink} target="_blank" rel="noopener noreferrer" className="hover:text-red-200 transition"><InstagramIcon size={13} /></a>
+                            <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hover:text-red-200 transition"><MessageSquare size={13} /></a>
                         </div>
                     </div>
                     <div className="flex items-center space-x-4">
@@ -48,10 +54,38 @@ export default function Header({ cartCount, searchQuery, setSearchQuery, onOpenC
                             <span>Bahasa Indonesia</span>
                             <ChevronDown size={12} />
                         </div>
-                        <div className="flex items-center space-x-1.5 cursor-pointer hover:text-red-200 transition font-semibold">
-                            <User size={13} />
-                            <span>Abdul Rohman</span>
-                        </div>
+                        {currentUser ? (
+                            <div className="flex items-center space-x-2 font-semibold">
+                                <button
+                                    onClick={onProfileClick}
+                                    className="flex items-center space-x-1.5 cursor-pointer hover:text-red-200 transition font-semibold"
+                                    title="Buka Profil & Pesanan Saya"
+                                >
+                                    {currentUser.avatar ? (
+                                        <img src={currentUser.avatar} alt={currentUser.name} className="w-5 h-5 rounded-full border border-white/30 object-cover" />
+                                    ) : (
+                                        <User size={13} />
+                                    )}
+                                    <span className="max-w-[100px] truncate">{currentUser.name?.split(' ')[0]}</span>
+                                </button>
+                                <button
+                                    onClick={onLogout}
+                                    className="flex items-center space-x-1 text-red-200 hover:text-white transition cursor-pointer ml-1 border-l border-white/20 pl-2"
+                                    title="Keluar"
+                                >
+                                    <LogOut size={12} />
+                                    <span>Keluar</span>
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={onLoginClick}
+                                className="flex items-center space-x-1.5 cursor-pointer hover:text-red-200 transition font-semibold"
+                            >
+                                <User size={13} />
+                                <span>Masuk</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -60,13 +94,22 @@ export default function Header({ cartCount, searchQuery, setSearchQuery, onOpenC
             <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 {/* Logo */}
                 <div className="flex items-center justify-between">
-                    <a href="/" className="flex items-center space-x-2 group">
+                    <a 
+                        href="/" 
+                        onClick={(e) => {
+                            if (onLogoClick) {
+                                e.preventDefault();
+                                onLogoClick();
+                            }
+                        }}
+                        className="flex items-center space-x-2 group"
+                    >
                         <div className="bg-white text-red-600 p-2 rounded-xl shadow-lg shadow-red-950/20 group-hover:scale-105 transition duration-300">
                             <Car className="h-6 w-6" />
                         </div>
                         <div>
-                            <span className="text-xl font-extrabold tracking-wide bg-linear-to-r from-white to-red-200 bg-clip-text text-transparent">
-                                Putri Jaya Mobil
+                            <span className="text-xl font-extrabold tracking-wide bg-linear-to-r from-white to-red-200 bg-clip-text text-transparent font-sans">
+                                {storeName}
                             </span>
                             <span className="block text-[10px] text-red-200 tracking-wider -mt-1 font-semibold uppercase">
                                 Premium E-Commerce

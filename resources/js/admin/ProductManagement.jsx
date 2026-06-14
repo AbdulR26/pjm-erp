@@ -267,6 +267,8 @@ export default function ProductManagement() {
     const [formCategoryPath, setFormCategoryPath] = useState([]);
     const [formBadge, setFormBadge] = useState('');
     const [formAttributes, setFormAttributes] = useState({});
+    const [formIsFlashSale, setFormIsFlashSale] = useState(false);
+    const [formFlashSaleStock, setFormFlashSaleStock] = useState(0);
     
     const [formMainImage, setFormMainImage] = useState('');
     const [formGalleryImages, setFormGalleryImages] = useState([]);
@@ -365,6 +367,8 @@ export default function ProductManagement() {
         setFormCategoryPath([]);
         setFormBadge('');
         setFormAttributes({});
+        setFormIsFlashSale(false);
+        setFormFlashSaleStock(0);
         setFormMainImage('');
         setFormGalleryImages([]);
         setFormVariants([
@@ -385,6 +389,8 @@ export default function ProductManagement() {
         setFormCategoryPath(product.category_path);
         setFormBadge(product.badge);
         setFormAttributes({ ...product.attributes });
+        setFormIsFlashSale(product.is_flash_sale || false);
+        setFormFlashSaleStock(product.flash_sale_stock || 0);
         setFormMainImage(product.main_image);
         setFormGalleryImages([...product.gallery_images]);
         setFormVariants([...product.variants]);
@@ -636,6 +642,8 @@ export default function ProductManagement() {
             description: formDescription,
             main_image: formMainImage,
             badge: formBadge,
+            is_flash_sale: formIsFlashSale,
+            flash_sale_stock: formFlashSaleStock,
             attributes: formAttributes,
             variants: formVariants.map(v => ({
                 id: typeof v.id === 'number' && v.id > 1000000000000 ? null : v.id,
@@ -923,12 +931,18 @@ export default function ProductManagement() {
                                                     </td>
                                                     <td className="py-3 px-5 max-w-[280px]">
                                                         <div className="font-extrabold text-slate-800 text-xs md:text-sm truncate leading-snug">{p.name}</div>
-                                                        <div className="text-[9px] font-black uppercase text-slate-400 tracking-wider mt-0.5 flex items-center space-x-1">
+                                                        <div className="text-[9px] font-black uppercase text-slate-400 tracking-wider mt-0.5 flex items-center flex-wrap gap-1.5">
                                                             <span>SKU: {p.variants[0]?.sku || '-'}</span>
                                                             {p.badge && (
                                                                 <>
                                                                     <span>•</span>
-                                                                    <span className="text-red-600 bg-red-50 px-1 rounded">{p.badge}</span>
+                                                                    <span className="text-red-650 bg-red-50 px-1.5 py-0.5 rounded font-black">{p.badge}</span>
+                                                                </>
+                                                            )}
+                                                            {p.is_flash_sale && (
+                                                                <>
+                                                                    <span>•</span>
+                                                                    <span className="bg-amber-500 text-white px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider flex items-center shadow-xs">⚡ Flash Sale ({p.flash_sale_stock} pcs)</span>
                                                                 </>
                                                             )}
                                                         </div>
@@ -1142,6 +1156,36 @@ export default function ProductManagement() {
                                             <span>Simpan Produk</span>
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-slate-100 pt-4 mt-2">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Pengaturan Flash Sale</label>
+                                        <label className="relative inline-flex items-center cursor-pointer mt-2.5 select-none">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={formIsFlashSale}
+                                                onChange={(e) => setFormIsFlashSale(e.target.checked)}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-650"></div>
+                                            <span className="ml-2.5 text-xs font-bold text-slate-700 uppercase tracking-wide">Aktifkan Promo Flash Sale</span>
+                                        </label>
+                                    </div>
+                                    
+                                    {formIsFlashSale && (
+                                        <div className="space-y-1.5 animate-in slide-in-from-left-3 duration-250">
+                                            <label className="text-[10px] font-black uppercase tracking-wider text-slate-400">Stok Promo Flash Sale</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={formFlashSaleStock}
+                                                onChange={(e) => setFormFlashSaleStock(parseInt(e.target.value) || 0)}
+                                                placeholder="Stok khusus Flash Sale"
+                                                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-hidden focus:border-red-500 focus:bg-white transition"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

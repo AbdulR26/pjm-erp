@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="Putri Jaya Mobil - Platform E-Commerce Otomotif Terlengkap & Terpercaya. Beli Mobil Baru, Suku Cadang Asli, Aksesoris Premium, dan Booking Layanan Servis Terbaik.">
     <title>Putri Jaya Mobil - E-Commerce Otomotif Premium</title>
     

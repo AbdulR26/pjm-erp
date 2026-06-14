@@ -144,6 +144,8 @@ class ProductController extends Controller
             'prices.*.level' => 'required|string|in:retail,bengkel,reseller',
             'prices.*.min_qty' => 'required|integer|min:1',
             'prices.*.price' => 'required|numeric|min:0',
+            'is_flash_sale' => 'nullable|boolean',
+            'flash_sale_stock' => 'nullable|integer|min:0',
             'gallery_images' => 'nullable|array',
             'gallery_images.*' => 'required|string'
         ]);
@@ -161,6 +163,8 @@ class ProductController extends Controller
                 'badge' => $validated['badge'] ?? null,
                 'rating' => 5.0,
                 'sold_count' => 0,
+                'is_flash_sale' => $validated['is_flash_sale'] ?? false,
+                'flash_sale_stock' => $validated['flash_sale_stock'] ?? 0,
                 'attributes' => $validated['attributes'] ?? []
             ]);
 
@@ -262,6 +266,8 @@ class ProductController extends Controller
             'prices.*.level' => 'required|string|in:retail,bengkel,reseller',
             'prices.*.min_qty' => 'required|integer|min:1',
             'prices.*.price' => 'required|numeric|min:0',
+            'is_flash_sale' => 'nullable|boolean',
+            'flash_sale_stock' => 'nullable|integer|min:0',
             'gallery_images' => 'nullable|array',
             'gallery_images.*' => 'required|string'
         ]);
@@ -276,6 +282,8 @@ class ProductController extends Controller
                 'description' => $validated['description'] ?? null,
                 'main_image' => $validated['main_image'] ?? null,
                 'badge' => $validated['badge'] ?? null,
+                'is_flash_sale' => $validated['is_flash_sale'] ?? false,
+                'flash_sale_stock' => $validated['flash_sale_stock'] ?? 0,
                 'attributes' => $validated['attributes'] ?? []
             ]);
 

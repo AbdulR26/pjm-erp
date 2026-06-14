@@ -11,5 +11,9 @@ class Customer extends Model
         'email',
         'phone',
         'address',
+        'social_provider',
+        'social_id',
+        'avatar',
+        'password',
     ];
 }

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Star, ShoppingCart, ShieldCheck, Heart, Share2, Plus, Minus, ArrowLeft, Truck, ShieldAlert, Award } from 'lucide-react';
 
-export default function ProductDetailPage({ product, onBack, onAddToCart }) {
+export default function ProductDetailPage({ product, onBack, onAddToCart, settings = {} }) {
+    const whatsappNumber = settings.store_whatsapp || '6281234567890';
+    const storeName = settings.store_name || 'Putri Jaya Mobil';
     const [selectedVariant, setSelectedVariant] = useState(product.variants[0] || '');
     const [quantity, setQuantity] = useState(1);
     const [isWishlist, setIsWishlist] = useState(false);
@@ -228,7 +230,9 @@ export default function ProductDetailPage({ product, onBack, onAddToCart }) {
                         
                         {/* Buy Now / WA Link - Shopee Solid Red Button */}
                         <a
-                            href={`https://wa.me/6281234567890?text=Halo%20Putri%20Jaya%20Mobil,%20saya%20tertarik%20membeli%20${encodeURIComponent(product.name)}%20(Varian:%20${encodeURIComponent(selectedVariant)},%20Jumlah:%20${quantity}).%20Bagaimana%20proses%20selanjutnya?`}
+                            href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+                                `Halo ${storeName}, saya tertarik membeli ${product.name} (Varian: ${selectedVariant}, Jumlah: ${quantity}). Bagaimana proses selanjutnya?`
+                            )}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex-1 min-w-[150px] bg-linear-to-r from-red-600 to-red-900 hover:from-red-700 hover:to-red-950 text-white font-extrabold py-3.5 px-6 rounded-lg transition duration-300 flex items-center justify-center space-x-2 shadow-md hover:shadow-red-500/20"

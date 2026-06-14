@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { X, Star, ShoppingCart, ShieldCheck, Heart, Share2, Plus, Minus } from 'lucide-react';
 
-export default function ProductDetailModal({ product, onClose, onAddToCart }) {
+export default function ProductDetailModal({ product, onClose, onAddToCart, settings = {} }) {
+    const whatsappNumber = settings.store_whatsapp || '6281234567890';
+    const storeName = settings.store_name || 'Putri Jaya Mobil';
     const [selectedVariant, setSelectedVariant] = useState(product.variants[0] || '');
     const [quantity, setQuantity] = useState(1);
     const [isWishlist, setIsWishlist] = useState(false);
@@ -183,7 +185,9 @@ export default function ProductDetailModal({ product, onClose, onAddToCart }) {
                         </button>
                         
                         <a
-                            href={`https://wa.me/6281234567890?text=Halo%20Putri%20Jaya%20Mobil,%20saya%20tertarik%20membeli%20${encodeURIComponent(product.name)}%20(Varian:%20${encodeURIComponent(selectedVariant)},%20Jumlah:%20${quantity}).%20Bagaimana%20proses%20selanjutnya?`}
+                            href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+                                `Halo ${storeName}, saya tertarik membeli ${product.name} (Varian: ${selectedVariant}, Jumlah: ${quantity}). Bagaimana proses selanjutnya?`
+                            )}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-xl transition duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-emerald-500/20"

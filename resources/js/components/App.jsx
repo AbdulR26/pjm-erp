@@ -8,6 +8,9 @@ import CartDrawer from './CartDrawer';
 import ProductDetailPage from './ProductDetailPage';
 import CheckoutPage from './CheckoutPage';
 import Footer from './Footer';
+import FlashSalePage from './FlashSalePage';
+import LoginPage from './LoginPage';
+import UserProfilePage from './UserProfilePage';
 
 // Data produk otomotif premium Putri Jaya Mobil
 const INITIAL_PRODUCTS = [
@@ -215,7 +218,10 @@ const INITIAL_PRODUCTS = [
 ];
 
 export default function App() {
-    const [products, setProducts] = useState(INITIAL_PRODUCTS);
+    const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
+    const [settings, setSettings] = useState({});
+    const [loading, setLoading] = useState(true);
     const [cart, setCart] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('Semua');
@@ -223,6 +229,37 @@ export default function App() {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isCheckoutActive, setIsCheckoutActive] = useState(false);
     const [lastOrder, setLastOrder] = useState(null);
+    const [isFlashSalePageActive, setIsFlashSalePageActive] = useState(false);
+    const [currentUser, setCurrentUser] = useState(null);
+    const [showLoginModal, setShowLoginModal] = useState(false);
+    const [authChecked, setAuthChecked] = useState(false);
+    const [isLoginPageActive, setIsLoginPageActive] = useState(false);
+    const [isUserProfileActive, setIsUserProfileActive] = useState(false);
+    const [loginReason, setLoginReason] = useState('');
+
+    // Fetch data from database
+    useEffect(() => {
+        setLoading(true);
+        Promise.all([
+            fetch('/api/products').then(res => res.json()),
+            fetch('/api/categories').then(res => res.json()),
+            fetch('/api/settings').then(res => res.json()),
+            fetch('/api/auth/me').then(res => res.json()).catch(() => null)
+        ])
+        .then(([productsData, categoriesData, settingsData, meData]) => {
+            setProducts(productsData);
+            setCategories(categoriesData);
+            setSettings(settingsData);
+            if (meData && meData.id) setCurrentUser(meData);
+            setAuthChecked(true);
+            setLoading(false);
+        })
+        .catch(err => {
+            console.error("Gagal mengambil data dari database:", err);
+            setAuthChecked(true);
+            setLoading(false);
+        });
+    }, []);
 
     // Load cart dari localStorage jika ada
     useEffect(() => {
@@ -283,9 +320,31 @@ export default function App() {
     };
 
     const handleCheckout = () => {
+        if (!currentUser) {
+            setLoginReason('checkout');
+            setIsLoginPageActive(true);
+            setIsCartOpen(false);
+            return;
+        }
         setIsCheckoutActive(true);
         setIsCartOpen(false);
         setSelectedProduct(null); // Tutup detail produk jika sedang terbuka
+    };
+
+    const handleLogout = async () => {
+        try {
+            await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' } });
+        } catch (e) { /* silently fail */ }
+        setCurrentUser(null);
+    };
+
+    const handleGoToLoginPage = (reason = '') => {
+        setLoginReason(reason);
+        setIsLoginPageActive(true);
+        setIsCartOpen(false);
+        setSelectedProduct(null);
+        setIsCheckoutActive(false);
+        setIsFlashSalePageActive(false);
     };
 
     const handleOrderSuccess = (orderData) => {
@@ -296,17 +355,63 @@ export default function App() {
 
     return (
         <div className="flex flex-col min-h-screen bg-[#f5f5f5]">
-            {/* Header / Navbar */}
             <Header 
+                settings={settings}
+                currentUser={currentUser}
                 cartCount={cart.reduce((total, item) => total + item.quantity, 0)}
                 searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
+                setSearchQuery={(q) => {
+                    setSearchQuery(q);
+                    if (q) {
+                        setIsFlashSalePageActive(false);
+                        setSelectedProduct(null);
+                    }
+                }}
                 onOpenCart={() => setIsCartOpen(true)}
+                onLogoClick={() => {
+                    setIsFlashSalePageActive(false);
+                    setSelectedProduct(null);
+                    setIsCheckoutActive(false);
+                    setIsLoginPageActive(false);
+                    setIsUserProfileActive(false);
+                    setLastOrder(null);
+                }}
+                onLogout={handleLogout}
+                onLoginClick={() => handleGoToLoginPage()}
+                onProfileClick={() => {
+                    setIsUserProfileActive(true);
+                    setIsLoginPageActive(false);
+                    setSelectedProduct(null);
+                    setIsCheckoutActive(false);
+                    setIsFlashSalePageActive(false);
+                    setLastOrder(null);
+                }}
             />
 
-            <main className="flex-grow pb-12">
+            <main className="grow pb-12">
                 <div className="max-w-[1200px] mx-auto px-4 md:px-6">
-                    {lastOrder ? (
+                    {loading ? (
+                        <div className="flex flex-col items-center justify-center py-32 space-y-4">
+                            <div className="w-12 h-12 border-4 border-slate-200 border-t-red-650 rounded-full animate-spin"></div>
+                            <p className="text-slate-500 font-bold text-sm tracking-wide">Memuat produk & kategori dari database...</p>
+                        </div>
+                    ) : isUserProfileActive ? (
+                        <UserProfilePage
+                            currentUser={currentUser}
+                            onUpdateUser={(user) => setCurrentUser(user)}
+                            onBack={() => setIsUserProfileActive(false)}
+                            settings={settings}
+                        />
+                    ) : isLoginPageActive ? (
+                        <LoginPage
+                            reason={loginReason}
+                            onBack={() => setIsLoginPageActive(false)}
+                            onLoginSuccess={(user) => {
+                                setCurrentUser(user);
+                                setIsLoginPageActive(false);
+                            }}
+                        />
+                    ) : lastOrder ? (
                         <div className="max-w-xl mx-auto bg-white rounded-2xl border border-slate-100 p-6 md:p-8 text-center space-y-6 shadow-xs animate-in fade-in zoom-in-95 duration-300 my-8">
                             <div className="h-20 w-20 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 stroke-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -335,6 +440,12 @@ export default function App() {
                                     <span className="text-slate-400">Metode Pembayaran</span>
                                     <span className="text-slate-800 font-bold">{lastOrder.paymentMethod}</span>
                                 </div>
+                                {lastOrder.discount > 0 && (
+                                    <div className="flex justify-between border-b border-slate-100/60 pb-2 text-red-600 font-bold">
+                                        <span>Potongan Voucher</span>
+                                        <span>- Rp {lastOrder.discount.toLocaleString('id-ID')} ({lastOrder.voucher_code})</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between pt-1 text-sm font-extrabold text-slate-800">
                                     <span>Total Pembayaran</span>
                                     <span className="text-red-650">Rp {lastOrder.total.toLocaleString('id-ID')}</span>
@@ -349,7 +460,9 @@ export default function App() {
                                     Belanja Lagi
                                 </button>
                                 <a
-                                    href={`https://wa.me/6281234567890?text=Halo%20Putri%20Jaya%20Mobil,%20saya%20sudah%20melakukan%20pembayaran%20melalui%20Midtrans%20sebesar%20Rp%20${lastOrder.total.toLocaleString('id-ID')}%20untuk%20pesanan%20saya.%20Mohon%20segera%20diproses.`}
+                                    href={`https://wa.me/${settings.store_whatsapp || '6281234567890'}?text=${encodeURIComponent(
+                                        `Halo ${settings.store_name || 'Putri Jaya Mobil'}, saya sudah melakukan pembayaran melalui Midtrans sebesar Rp ${lastOrder.total.toLocaleString('id-ID')} untuk pesanan saya. Mohon segera diproses.`
+                                    )}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md hover:shadow-emerald-500/10 transition flex items-center justify-center space-x-2 text-xs uppercase tracking-wider"
@@ -363,11 +476,22 @@ export default function App() {
                             cart={cart}
                             onBack={() => setIsCheckoutActive(false)}
                             onOrderSuccess={handleOrderSuccess}
+                            currentUser={currentUser}
+                            settings={settings}
                         />
                     ) : selectedProduct ? (
                         <ProductDetailPage 
                             product={selectedProduct} 
                             onBack={() => setSelectedProduct(null)} 
+                            onAddToCart={handleAddToCart}
+                            settings={settings}
+                        />
+                    ) : isFlashSalePageActive ? (
+                        <FlashSalePage 
+                            products={products}
+                            settings={settings}
+                            onBack={() => setIsFlashSalePageActive(false)}
+                            onProductClick={setSelectedProduct}
                             onAddToCart={handleAddToCart}
                         />
                     ) : (
@@ -377,12 +501,22 @@ export default function App() {
 
                             {/* Category Grid */}
                             <Categories 
+                                categories={categories}
                                 selectedCategory={selectedCategory}
-                                setSelectedCategory={setSelectedCategory}
+                                setSelectedCategory={(cat) => {
+                                    setSelectedCategory(cat);
+                                    setIsFlashSalePageActive(false);
+                                    setSelectedProduct(null);
+                                }}
                             />
 
                             {/* Flash Sale Banner */}
-                            <FlashSale onProductClick={setSelectedProduct} />
+                            <FlashSale 
+                                products={products} 
+                                settings={settings} 
+                                onProductClick={setSelectedProduct} 
+                                onSeeAll={() => setIsFlashSalePageActive(true)}
+                            />
 
                             {/* Products Section with filter & search */}
                             <ProductSection 
@@ -398,7 +532,7 @@ export default function App() {
             </main>
 
             {/* Footer */}
-            <Footer />
+            <Footer settings={settings} />
 
             {/* Shopping Cart Drawer */}
             <CartDrawer 
@@ -408,6 +542,7 @@ export default function App() {
                 onUpdateQty={handleUpdateCartQty}
                 onRemoveItem={handleRemoveFromCart}
                 onCheckout={handleCheckout}
+                settings={settings}
             />
         </div>
     );

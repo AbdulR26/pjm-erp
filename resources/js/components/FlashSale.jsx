@@ -1,167 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import { Flame, ChevronRight } from 'lucide-react';
 
-const FLASH_PRODUCTS = [
-    {
-        id: 6,
-        name: 'Kamera Dashboard 70mai Dashcam A800S 4K HDR',
-        price: 1450000,
-        originalPrice: 1750000,
-        discount: 17,
-        image: 'https://images.unsplash.com/photo-1522030299830-16b8d3d049fe?auto=format&fit=crop&w=600&q=80',
-        soldPercent: 85,
-        soldQty: 102
-    },
-    {
-        id: 8,
-        name: 'Paket Coating Ceramic Nano 3 Layer - Car Salon',
-        price: 3499000,
-        originalPrice: 4500000,
-        discount: 22,
-        image: 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=600&q=80',
-        soldPercent: 65,
-        soldQty: 24
-    },
-    {
-        id: 5,
-        name: 'Oli Mesin Shell Helix Ultra 5W-40 4 Liter',
-        price: 520000,
-        originalPrice: 600000,
-        discount: 13,
-        image: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=600&q=80',
-        soldPercent: 92,
-        soldQty: 165
-    },
-    {
-        id: 10,
-        name: 'Lampu LED Headlight Osram FOG H8/H11/H16',
-        price: 850000,
-        originalPrice: 990000,
-        discount: 14,
-        image: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=600&q=80',
-        soldPercent: 40,
-        soldQty: 28
-    }
-];
-
-export default function FlashSale({ onProductClick }) {
+export default function FlashSale({ products = [], settings = {}, onProductClick, onSeeAll }) {
     const [timeLeft, setTimeLeft] = useState({
-        hours: 2,
-        minutes: 45,
-        seconds: 30
+        hours: 0,
+        minutes: 0,
+        seconds: 0,
+        isExpired: false
     });
 
-    // Countdown Timer logic
+    // Countdown Timer logic based on settings end time
     useEffect(() => {
-        const timer = setInterval(() => {
-            setTimeLeft((prev) => {
-                if (prev.seconds > 0) {
-                    return { ...prev, seconds: prev.seconds - 1 };
-                } else if (prev.minutes > 0) {
-                    return { ...prev, minutes: prev.minutes - 1, seconds: 59 };
-                } else if (prev.hours > 0) {
-                    return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
-                } else {
-                    // Reset timer to simulate endless loop
-                    return { hours: 3, minutes: 0, seconds: 0 };
-                }
-            });
-        }, 1000);
+        const endTimeStr = settings.flash_sale_end_time;
+        if (!endTimeStr) return;
+
+        const updateTimer = () => {
+            const normalizedStr = endTimeStr.replace(' ', 'T');
+            const endTime = new Date(normalizedStr);
+            const now = new Date();
+            const diff = endTime.getTime() - now.getTime();
+
+            if (diff <= 0) {
+                setTimeLeft({ hours: 0, minutes: 0, seconds: 0, isExpired: true });
+                return;
+            }
+
+            const totalSeconds = Math.floor(diff / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            setTimeLeft({ hours, minutes, seconds, isExpired: false });
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
 
         return () => clearInterval(timer);
-    }, []);
+    }, [settings.flash_sale_end_time]);
 
     const formatNumber = (num) => String(num).padStart(2, '0');
 
-    // Ambil full product info dari id saat diklik
-    const handleProductClick = (id) => {
-        // Mock product mapping (we can just load mock information or find it)
-        const products = [
-            {
-                id: 6,
-                name: 'Kamera Dashboard 70mai Dashcam A800S 4K HDR',
-                category: 'Aksesoris',
-                price: 1450000,
-                originalPrice: 1750000,
-                discount: 17,
-                rating: 4.8,
-                sold: 120,
-                image: 'https://images.unsplash.com/photo-1522030299830-16b8d3d049fe?auto=format&fit=crop&w=600&q=80',
-                badge: 'Flash Sale',
-                description: 'Dashcam 70mai A800S menghasilkan rekaman berkualitas bioskop 4K Ultra HD dengan sensor gambar Sony IMX415. Dilengkapi built-in GPS, sistem bantuan pengemudi ADAS, pemantauan parkir 24 jam (dengan hardwire kit), dan kontrol aplikasi via Wi-Fi.',
-                specs: {
-                    'Resolusi': '3840x2160p (4K)',
-                    'Sensor Kamera': 'Sony IMX415',
-                    'Lensa': 'Super Wide Angle 140°',
-                    'Layar': '3.0 inci IPS'
-                },
-                variants: ['Front Cam Only', 'Front + Rear Cam']
-            },
-            {
-                id: 8,
-                name: 'Paket Coating Ceramic Nano 3 Layer - Car Salon',
-                category: 'Jasa Servis',
-                price: 3499000,
-                originalPrice: 4500000,
-                discount: 22,
-                rating: 5.0,
-                sold: 38,
-                image: 'https://images.unsplash.com/photo-1607860108855-64acf2078ed9?auto=format&fit=crop&w=600&q=80',
-                badge: 'Rekomendasi',
-                description: 'Paket perlindungan cat mobil premium menggunakan cairan Ceramic Nano Glass 9H sebanyak 3 layer. Menghasilkan efek daun talas (hydrophobic), mencegah jamur cat/waterspot, melindungi dari sinar UV perusak warna, dan kilau kaca super wet-look bergaransi 2 tahun.',
-                specs: {
-                    'Durasi Pengerjaan': '2 Hari (Wajib Booking)',
-                    'Lapisan (Layer)': '3 Layer Nano Ceramic 9H',
-                    'Garansi': '2 Tahun Perawatan Rutin',
-                    'Lokasi': 'Workshop Putri Jaya Mobil (Bekasi)'
-                },
-                variants: ['City Car', 'SUV / Sedan', 'MPV / Big SUV']
-            },
-            {
-                id: 5,
-                name: 'Oli Mesin Shell Helix Ultra 5W-40 4 Liter',
-                category: 'Oli & Aki',
-                price: 520000,
-                originalPrice: 600000,
-                discount: 13,
-                rating: 4.9,
-                sold: 180,
-                image: 'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=600&q=80',
-                badge: '100% Original',
-                description: 'Shell Helix Ultra 5W-40 merupakan pelumas mesin sintetis penuh (fully synthetic) dengan PurePlus Technology, menjaga mesin tetap bersih layaknya baru dari pabrik serta memberikan perlindungan maksimal dari keausan dan korosi.',
-                specs: {
-                    'Viskositas': 'SAE 5W-40',
-                    'Volume': '4 Liter',
-                    'Spesifikasi API': 'API SP / SN Plus, ACEA A3/B4',
-                    'Jenis Mesin': 'Bensin dan Diesel'
-                },
-                variants: ['4 Liter']
-            },
-            {
-                id: 10,
-                name: 'Lampu LED Headlight Osram LEDriving FOG H8/H11/H16',
-                category: 'Kelistrikan',
-                price: 850000,
-                originalPrice: 990000,
-                discount: 14,
-                rating: 4.7,
-                sold: 72,
-                image: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=600&q=80',
-                badge: 'Cahaya Terang',
-                description: 'Lampu LED Osram menggantikan lampu halogen kabut standar dengan cahaya LED putih terang 6000K yang stylish. Menawarkan visibilitas yang jauh lebih baik tanpa menyilaukan pengendara dari arah berlawanan.',
-                specs: {
-                    'Tipe Socket': 'H8 / H11 / H16',
-                    'Temperatur Warna': '6000 Kelvin (Putih)',
-                    'Daya Listrik': '8.2 Watt per Bohlam',
-                    'Umur Pakai': 'Hingga 5000 Jam'
-                },
-                variants: ['Putih 6000K', 'Kuning 3000K']
-            }
-        ];
-        
-        const found = products.find(p => p.id === id);
-        if (found) onProductClick(found);
-    };
+    // Get the flash sale products dynamically from loaded products
+    const flashProducts = products
+        .filter(p => p.is_flash_sale)
+        .slice(0, 4)
+        .map(p => {
+            const remaining = p.flash_sale_stock ?? 0;
+            // Calculate a mock sold quantity and initial total stock dynamically
+            const mockSold = (p.id % 4) + 4; 
+            const totalStock = remaining + mockSold;
+            const soldPercent = remaining === 0 ? 100 : (totalStock > 0 ? Math.round((mockSold / totalStock) * 100) : 0);
+            return {
+                ...p,
+                soldPercent,
+                remaining
+            };
+        });
+
+    if (flashProducts.length === 0 || timeLeft.isExpired) {
+        return null; // Don't render Flash Sale section if there are no products or if the time has expired
+    }
 
     return (
         <div className="bg-white rounded-lg mt-4 shadow-sm border border-slate-100 overflow-hidden">
@@ -190,18 +89,21 @@ export default function FlashSale({ onProductClick }) {
                     </div>
                 </div>
 
-                <a href="#" className="flex items-center text-xs font-semibold text-yellow-300 hover:text-yellow-400 transition">
+                <span 
+                    onClick={onSeeAll}
+                    className="flex items-center text-xs font-semibold text-yellow-300 hover:text-yellow-400 cursor-pointer transition"
+                >
                     <span>Lihat Semua</span>
                     <ChevronRight size={15} />
-                </a>
+                </span>
             </div>
 
             {/* Products Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-5">
-                {FLASH_PRODUCTS.map((prod) => (
+                {flashProducts.map((prod) => (
                     <div
                         key={prod.id}
-                        onClick={() => handleProductClick(prod.id)}
+                        onClick={() => onProductClick(prod)}
                         className="bg-slate-50/50 hover:bg-white border border-slate-100 rounded-xl p-3 flex flex-col justify-between transition duration-300 hover:shadow-xl hover:shadow-red-500/5 hover:-translate-y-1 cursor-pointer group"
                     >
                         {/* Image & Discount */}
@@ -212,9 +114,11 @@ export default function FlashSale({ onProductClick }) {
                                 className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                             />
                             {/* Discount Tag */}
-                            <div className="absolute top-2 right-2 bg-rose-500 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded shadow">
-                                -{prod.discount}%
-                            </div>
+                            {prod.discount > 0 && (
+                                <div className="absolute top-2 right-2 bg-rose-500 text-white text-[10px] md:text-xs font-black px-2 py-0.5 rounded shadow">
+                                    -{prod.discount}%
+                                </div>
+                            )}
                         </div>
 
                         {/* Title */}
@@ -229,9 +133,11 @@ export default function FlashSale({ onProductClick }) {
                                     Rp {(prod.price).toLocaleString('id-ID')}
                                 </span>
                             </div>
-                            <span className="text-[10px] md:text-xs text-slate-400 line-through">
-                                Rp {(prod.originalPrice).toLocaleString('id-ID')}
-                            </span>
+                            {prod.discount > 0 && prod.originalPrice && (
+                                <span className="text-[10px] md:text-xs text-slate-400 line-through">
+                                    Rp {(prod.originalPrice).toLocaleString('id-ID')}
+                                </span>
+                            )}
                         </div>
 
                         {/* Progress Bar Stok */}
@@ -244,7 +150,7 @@ export default function FlashSale({ onProductClick }) {
                                 />
                                 {/* Label overlay */}
                                 <span className="relative z-10 text-[9px] font-bold text-white uppercase drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">
-                                    {prod.soldPercent >= 90 ? 'Segera Habis' : `${prod.soldQty} Terjual`}
+                                    {prod.remaining === 0 ? 'Habis Terjual' : `Sisa ${prod.remaining} Unit`}
                                 </span>
                             </div>
                         </div>

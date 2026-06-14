@@ -21,7 +21,15 @@ const TwitterIcon = ({ size = 16, className = "" }) => (
     </svg>
 );
 
-export default function Footer() {
+export default function Footer({ settings = {} }) {
+    const storeName = settings.store_name || 'Putri Jaya Mobil';
+    const storeAddress = settings.store_address || 'Showroom Utama: Jl. Raya Jenderal Sudirman No. 45, Bekasi Barat, Jawa Barat.';
+    const facebookLink = settings.social_facebook || '#';
+    const instagramLink = settings.social_instagram || '#';
+    const tiktokLink = settings.social_tiktok || '#';
+    const whatsappNumber = settings.store_whatsapp || '6281234567890';
+    const whatsappLink = `https://wa.me/${whatsappNumber}`;
+
     return (
         <footer className="bg-zinc-900 text-slate-300">
             {/* Value Proposition Bar */}
@@ -67,7 +75,7 @@ export default function Footer() {
                         <li><a href="#" className="hover:text-white transition">Cara Pembelian</a></li>
                         <li><a href="#" className="hover:text-white transition">Pengiriman & Lacak</a></li>
                         <li><a href="#" className="hover:text-white transition">Pengembalian Barang & Dana</a></li>
-                        <li><a href="#" className="hover:text-white transition">Hubungi Kami (WhatsApp)</a></li>
+                        <li><a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Hubungi Kami (WhatsApp)</a></li>
                     </ul>
                 </div>
 
@@ -75,7 +83,7 @@ export default function Footer() {
                 <div>
                     <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">Tentang Kami</h5>
                     <ul className="space-y-2.5 text-xs font-semibold">
-                        <li><a href="#" className="hover:text-white transition">Profil Putri Jaya Mobil</a></li>
+                        <li><a href="#" className="hover:text-white transition">Profil {storeName}</a></li>
                         <li><a href="#" className="hover:text-white transition">Karir / Rekrutmen</a></li>
                         <li><a href="#" className="hover:text-white transition">Kebijakan Privasi</a></li>
                         <li><a href="#" className="hover:text-white transition">Syarat & Ketentuan</a></li>
@@ -110,23 +118,23 @@ export default function Footer() {
                 <div>
                     <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">Ikuti Media Sosial Kami</h5>
                     <div className="flex items-center space-x-3 mb-6">
-                        <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-600 hover:text-white transition">
+                        <a href={facebookLink} target="_blank" rel="noopener noreferrer" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-600 hover:text-white transition">
                             <FacebookIcon size={16} />
                         </a>
-                        <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-pink-600 hover:text-white transition">
+                        <a href={instagramLink} target="_blank" rel="noopener noreferrer" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-pink-600 hover:text-white transition">
                             <InstagramIcon size={16} />
                         </a>
-                        <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition">
+                        <a href={tiktokLink} target="_blank" rel="noopener noreferrer" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-zinc-700 hover:text-white transition">
                             <TwitterIcon size={16} />
                         </a>
-                        <a href="#" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 hover:text-white transition">
+                        <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-emerald-600 hover:text-white transition">
                             <MessageCircle size={16} />
                         </a>
                     </div>
                     
-                    <h5 className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-2">CUSTOMER LAYANAN PJM</h5>
+                    <h5 className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-2">LAYANAN CUSTOMER {storeName.toUpperCase()}</h5>
                     <p className="text-xs font-semibold text-slate-400 leading-normal">
-                        Showroom Utama: Jl. Raya Jenderal Sudirman No. 45, Bekasi Barat, Jawa Barat.
+                        {storeAddress}
                     </p>
                 </div>
             </div>
@@ -134,8 +142,8 @@ export default function Footer() {
             {/* Bottom Bar */}
             <div className="border-t border-slate-800 py-6 text-center text-[11px] text-slate-500 font-medium">
                 <div className="max-w-[1200px] mx-auto px-4 md:px-6 flex flex-col md:flex-row md:justify-between items-center gap-3">
-                    <p>© {new Date().getFullYear()} Putri Jaya Mobil. Hak Cipta Dilindungi Undang-Undang.</p>
-                    <p className="text-slate-600">Simulasi Antarmuka E-Commerce Otomotif Premium. Dikembangkan dengan React & Laravel.</p>
+                    <p>© {new Date().getFullYear()} {storeName}. Hak Cipta Dilindungi Undang-Undang.</p>
+                    <p className="text-slate-650">Simulasi Antarmuka E-Commerce Otomotif Premium. Dikembangkan dengan React & Laravel.</p>
                 </div>
             </div>
         </footer>
