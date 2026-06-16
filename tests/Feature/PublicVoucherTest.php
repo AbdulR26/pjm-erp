@@ -168,6 +168,7 @@ class PublicVoucherTest extends TestCase
                 'name' => 'Fuji E-Commerce',
                 'phone' => '081234567899',
                 'detail' => 'Jalan Kebagusan No. 5, Jakarta Selatan',
+                'postal_code' => '10110',
             ],
             'items' => [
                 [

@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Users, UsersRound, Calendar, DollarSign, PlusCircle, Wrench, Shield, CheckCircle } from 'lucide-react';
+import { 
+    Users, UsersRound, Calendar, DollarSign, PlusCircle, 
+    Wrench, Shield, CheckCircle, ShoppingBag, Activity 
+} from 'lucide-react';
+
+const fmt = (n) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(n);
 
 export default function Dashboard({ user, setTab }) {
-    const [staffCount, setStaffCount] = useState(0);
-    const [customerCount, setCustomerCount] = useState(0);
+    const [stats, setStats] = useState({
+        customer_count: 0,
+        staff_count: 0,
+        order_count: 0,
+        pending_order_count: 0,
+        product_count: 0,
+        total_sales: 0,
+        po_count: 0,
+        activities: []
+    });
     const [isLoading, setIsLoading] = useState(true);
     
     const isAdmin = user.roles.includes('admin');
@@ -13,18 +26,9 @@ export default function Dashboard({ user, setTab }) {
         const fetchDashboardData = async () => {
             setIsLoading(true);
             try {
-                // Fetch customer count (accessible by both roles)
-                const custRes = await axios.get('/adminv1/api/customers');
-                if (custRes.data && custRes.data.customers) {
-                    setCustomerCount(custRes.data.customers.length);
-                }
-
-                // Fetch staff count (admin only)
-                if (isAdmin) {
-                    const userRes = await axios.get('/adminv1/api/users');
-                    if (userRes.data && userRes.data.users) {
-                        setStaffCount(userRes.data.users.length);
-                    }
+                const res = await axios.get('/adminv1/api/dashboard/stats');
+                if (res.data) {
+                    setStats(res.data);
                 }
             } catch (err) {
                 console.error('Error fetching dashboard counts:', err);
@@ -34,7 +38,7 @@ export default function Dashboard({ user, setTab }) {
         };
 
         fetchDashboardData();
-    }, [isAdmin]);
+    }, []);
 
     return (
         <div className="space-y-8">
@@ -61,7 +65,7 @@ export default function Dashboard({ user, setTab }) {
                     <div className="space-y-1">
                         <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Total Customer</span>
                         <h3 className="text-2xl font-black text-slate-800">
-                            {isLoading ? '...' : `${customerCount} Orang`}
+                            {isLoading ? '...' : `${stats.customer_count} Orang`}
                         </h3>
                         <span className="text-[10px] text-emerald-600 font-semibold flex items-center">
                             <CheckCircle size={10} className="mr-1" /> Database aktif
@@ -77,7 +81,7 @@ export default function Dashboard({ user, setTab }) {
                     <div className="space-y-1">
                         <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Total Staff/Admin</span>
                         <h3 className="text-2xl font-black text-slate-800">
-                            {!isAdmin ? 'Terkunci' : isLoading ? '...' : `${staffCount} Orang`}
+                            {!isAdmin ? 'Terkunci' : isLoading ? '...' : `${stats.staff_count} Orang`}
                         </h3>
                         <span className="text-[10px] text-slate-400 font-medium">
                             {isAdmin ? 'Hak akses panel penuh' : 'Akses terbatas untuk Staff'}
@@ -90,27 +94,31 @@ export default function Dashboard({ user, setTab }) {
                     </div>
                 </div>
 
-                {/* Active Bookings (Mocked) */}
+                {/* Total Orders / Pemesanan */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-xs flex items-center justify-between group hover:shadow-md transition">
                     <div className="space-y-1">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Booking Servis</span>
-                        <h3 className="text-2xl font-black text-slate-800">8 Pengerjaan</h3>
+                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Order Masuk</span>
+                        <h3 className="text-2xl font-black text-slate-800">
+                            {isLoading ? '...' : `${stats.order_count} Transaksi`}
+                        </h3>
                         <span className="text-[10px] text-amber-600 font-semibold">
-                            ⚠️ 3 Menunggu Konfirmasi
+                            ⚠️ {stats.pending_order_count} Menunggu Proses
                         </span>
                     </div>
                     <div className="h-12 w-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shadow-inner group-hover:scale-105 transition">
-                        <Calendar size={20} />
+                        <ShoppingBag size={20} />
                     </div>
                 </div>
 
-                {/* Sales Turnover (Mocked) */}
+                {/* Sales Turnover (Dynamic Omset) */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-xs flex items-center justify-between group hover:shadow-md transition">
                     <div className="space-y-1">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Estimasi Omset</span>
-                        <h3 className="text-2xl font-black text-slate-800">Rp 48,9 M</h3>
+                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">Total Omset</span>
+                        <h3 className="text-2xl font-black text-slate-800">
+                            {isLoading ? '...' : fmt(stats.total_sales)}
+                        </h3>
                         <span className="text-[10px] text-emerald-600 font-semibold">
-                            📈 Naik 12.5% bulan ini
+                            Pembayaran terkonfirmasi
                         </span>
                     </div>
                     <div className="h-12 w-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shadow-inner group-hover:scale-105 transition">
@@ -166,49 +174,43 @@ export default function Dashboard({ user, setTab }) {
                 {/* Recent Activities Panel */}
                 <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs lg:col-span-2">
                     <h4 className="font-extrabold text-sm text-slate-800 uppercase tracking-wide border-b border-slate-100 pb-3 mb-4">
-                        Aktifitas Sistem Terbaru (Simulasi)
+                        Aktifitas Sistem Terbaru
                     </h4>
-                    <div className="space-y-4">
-                        <div className="flex items-start space-x-3 text-xs leading-normal">
-                            <div className="h-2 w-2 bg-red-500 rounded-full mt-1.5 shrink-0"></div>
-                            <div className="flex-1">
-                                <p className="font-medium text-slate-700">
-                                    Customer <span className="font-bold">Andi Wijaya</span> berhasil ditambahkan ke database pelanggan.
-                                </p>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">Baru saja • oleh Super Admin</span>
-                            </div>
+                    
+                    {isLoading ? (
+                        <div className="py-12 flex flex-col items-center justify-center">
+                            <div className="h-6 w-6 border-2 border-red-650 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="mt-2 text-slate-400 font-semibold text-[10px]">Memuat aktifitas terbaru...</p>
                         </div>
+                    ) : stats.activities.length === 0 ? (
+                        <div className="py-12 text-center text-slate-400 text-xs font-semibold">
+                            Belum ada aktifitas sistem yang tercatat.
+                        </div>
+                    ) : (
+                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                            {stats.activities.map((activity, index) => {
+                                let dotColor = 'bg-slate-400';
+                                if (activity.type === 'order') dotColor = 'bg-red-500';
+                                else if (activity.type === 'supplier') dotColor = 'bg-blue-500';
+                                else if (activity.type === 'purchase_order') dotColor = 'bg-purple-500';
+                                else if (activity.type === 'stock_mutation') dotColor = 'bg-emerald-500';
 
-                        <div className="flex items-start space-x-3 text-xs leading-normal">
-                            <div className="h-2 w-2 bg-purple-500 rounded-full mt-1.5 shrink-0"></div>
-                            <div className="flex-1">
-                                <p className="font-medium text-slate-700">
-                                    Oli Shell Helix Ultra 5W-40 diperbarui datanya di katalog frontend.
-                                </p>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">15 menit yang lalu • oleh Staff Operasional</span>
-                            </div>
+                                return (
+                                    <div key={index} className="flex items-start space-x-3 text-xs leading-normal">
+                                        <div className={`h-2.5 w-2.5 rounded-full mt-1.5 shrink-0 ${dotColor}`}></div>
+                                        <div className="flex-1">
+                                            <p className="font-medium text-slate-700">
+                                                {activity.title}
+                                            </p>
+                                            <span className="text-[10px] text-slate-400 block mt-0.5 animate-pulse">
+                                                {activity.time_label} • oleh {activity.user}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-
-                        <div className="flex items-start space-x-3 text-xs leading-normal">
-                            <div className="h-2 w-2 bg-emerald-500 rounded-full mt-1.5 shrink-0"></div>
-                            <div className="flex-1">
-                                <p className="font-medium text-slate-700">
-                                    Sinkronisasi data WhatsApp Gateway berhasil diselesaikan.
-                                </p>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">1 jam yang lalu • oleh Sistem</span>
-                            </div>
-                        </div>
-
-                        <div className="flex items-start space-x-3 text-xs leading-normal">
-                            <div className="h-2 w-2 bg-red-500 rounded-full mt-1.5 shrink-0"></div>
-                            <div className="flex-1">
-                                <p className="font-medium text-slate-700">
-                                    Role baru `customer` ditambahkan ke basis data oleh seeder migration.
-                                </p>
-                                <span className="text-[10px] text-slate-400 block mt-0.5">2 jam yang lalu • oleh Developer</span>
-                            </div>
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>

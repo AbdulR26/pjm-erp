@@ -24,7 +24,14 @@ export default function CustomerManagement() {
         name: '',
         email: '',
         phone: '',
-        address: ''
+        address: '',
+        postal_code: '',
+        latitude: '',
+        longitude: '',
+        province: '',
+        city: '',
+        district: '',
+        village: ''
     });
     
     const [apiErrors, setApiErrors] = useState({});
@@ -32,6 +39,103 @@ export default function CustomerManagement() {
     
     // Toast Notification states
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+    // Region state hooks for cascading dropdowns in admin modal
+    const [provinces, setProvinces] = useState([]);
+    const [cities, setCities] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [villages, setVillages] = useState([]);
+    const [loadingRegions, setLoadingRegions] = useState({ provinces: false, cities: false, districts: false, villages: false });
+
+    const fetchProvinces = async () => {
+        setLoadingRegions(prev => ({ ...prev, provinces: true }));
+        try {
+            const res = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+            if (res.ok) {
+                const data = await res.json();
+                setProvinces(data);
+            }
+        } catch (e) {
+            console.error("Gagal mengambil data provinsi:", e);
+        } finally {
+            setLoadingRegions(prev => ({ ...prev, provinces: false }));
+        }
+    };
+
+    const fetchCities = async (provinceId) => {
+        setLoadingRegions(prev => ({ ...prev, cities: true }));
+        try {
+            const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${provinceId}.json`);
+            if (res.ok) {
+                const data = await res.json();
+                setCities(data);
+            }
+        } catch (e) {
+            console.error("Gagal mengambil data kota:", e);
+        } finally {
+            setLoadingRegions(prev => ({ ...prev, cities: false }));
+        }
+    };
+
+    const fetchDistricts = async (cityId) => {
+        setLoadingRegions(prev => ({ ...prev, districts: true }));
+        try {
+            const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${cityId}.json`);
+            if (res.ok) {
+                const data = await res.json();
+                setDistricts(data);
+            }
+        } catch (e) {
+            console.error("Gagal mengambil data kecamatan:", e);
+        } finally {
+            setLoadingRegions(prev => ({ ...prev, districts: false }));
+        }
+    };
+
+    const fetchVillages = async (districtId) => {
+        setLoadingRegions(prev => ({ ...prev, villages: true }));
+        try {
+            const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${districtId}.json`);
+            if (res.ok) {
+                const data = await res.json();
+                setVillages(data);
+            }
+        } catch (e) {
+            console.error("Gagal mengambil data desa:", e);
+        } finally {
+            setLoadingRegions(prev => ({ ...prev, villages: false }));
+        }
+    };
+
+    useEffect(() => {
+        if (!isModalOpen || provinces.length === 0) return;
+        if (formData.province) {
+            const foundProv = provinces.find(p => p.name.toUpperCase() === formData.province.toUpperCase());
+            if (foundProv) {
+                fetchCities(foundProv.id);
+            }
+        }
+    }, [formData.province, provinces, isModalOpen]);
+
+    useEffect(() => {
+        if (!isModalOpen || cities.length === 0) return;
+        if (formData.city) {
+            const foundCity = cities.find(c => c.name.toUpperCase() === formData.city.toUpperCase());
+            if (foundCity) {
+                fetchDistricts(foundCity.id);
+            }
+        }
+    }, [formData.city, cities, isModalOpen]);
+
+    useEffect(() => {
+        if (!isModalOpen || districts.length === 0) return;
+        if (formData.district) {
+            const foundDist = districts.find(d => d.name.toUpperCase() === formData.district.toUpperCase());
+            if (foundDist) {
+                fetchVillages(foundDist.id);
+            }
+        }
+    }, [formData.district, districts, isModalOpen]);
 
     const showToast = (message, type = 'success') => {
         setToast({ show: true, message, type });
@@ -58,9 +162,10 @@ export default function CustomerManagement() {
 
     const handleOpenCreateModal = () => {
         setModalMode('create');
-        setFormData({ name: '', email: '', phone: '', address: '' });
+        setFormData({ name: '', email: '', phone: '', address: '', postal_code: '', latitude: '', longitude: '', province: '', city: '', district: '', village: '' });
         setApiErrors({});
         setIsModalOpen(true);
+        fetchProvinces();
     };
 
     const handleOpenEditModal = (customer) => {
@@ -70,10 +175,18 @@ export default function CustomerManagement() {
             name: customer.name,
             email: customer.email || '',
             phone: customer.phone || '',
-            address: customer.address || ''
+            address: customer.address_detail || customer.address || '',
+            postal_code: customer.postal_code || '',
+            latitude: customer.latitude || '',
+            longitude: customer.longitude || '',
+            province: customer.province || '',
+            city: customer.city || '',
+            district: customer.district || '',
+            village: customer.village || ''
         });
         setApiErrors({});
         setIsModalOpen(true);
+        fetchProvinces();
     };
 
     const handleFormSubmit = async (e) => {
@@ -173,7 +286,8 @@ export default function CustomerManagement() {
         const emailMatch = c.email ? c.email.toLowerCase().includes(searchQuery.toLowerCase()) : false;
         const phoneMatch = c.phone ? c.phone.toLowerCase().includes(searchQuery.toLowerCase()) : false;
         const addressMatch = c.address ? c.address.toLowerCase().includes(searchQuery.toLowerCase()) : false;
-        return nameMatch || emailMatch || phoneMatch || addressMatch;
+        const postalMatch = c.postal_code ? c.postal_code.toLowerCase().includes(searchQuery.toLowerCase()) : false;
+        return nameMatch || emailMatch || phoneMatch || addressMatch || postalMatch;
     });
 
     const sortedCustomers = [...filteredCustomers].sort((a, b) => {
@@ -308,7 +422,21 @@ export default function CustomerManagement() {
                                         <td className="py-4 px-6 font-bold text-slate-800">{customer.name}</td>
                                         <td className="py-4 px-6 text-slate-500">{customer.email || <span className="text-slate-300 italic text-[11px]">Belum Diisi</span>}</td>
                                         <td className="py-4 px-6 text-slate-500 font-semibold">{customer.phone || <span className="text-slate-300 italic text-[11px]">Belum Diisi</span>}</td>
-                                        <td className="py-4 px-6 text-slate-500 max-w-xs truncate" title={customer.address}>{customer.address || <span className="text-slate-300 italic text-[11px]">Belum Diisi</span>}</td>
+                                        <td className="py-4 px-6 text-slate-500 max-w-xs" title={`${customer.address || ''} ${customer.postal_code ? '(Kode Pos: ' + customer.postal_code + ')' : ''}`}>
+                                            {customer.address ? (
+                                                <>
+                                                    <div className="truncate">{customer.address}</div>
+                                                    {customer.postal_code && (
+                                                        <div className="text-[10px] font-bold text-slate-400 mt-0.5">Kode Pos: {customer.postal_code}</div>
+                                                    )}
+                                                    {customer.latitude && customer.longitude && (
+                                                        <div className="text-[10px] text-slate-400">Coords: {customer.latitude}, {customer.longitude}</div>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <span className="text-slate-300 italic text-[11px]">Belum Diisi</span>
+                                            )}
+                                        </td>
                                         <td className="py-4 px-6">
                                             <div className="flex items-center justify-center space-x-2.5">
                                                 <button
@@ -384,7 +512,7 @@ export default function CustomerManagement() {
             {/* Add/Edit Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-                    <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
                         {/* Header */}
                         <div className="px-6 py-4 bg-linear-to-r from-red-600 to-red-950 text-white flex justify-between items-center">
                             <h3 className="font-extrabold text-sm flex items-center space-x-1.5 uppercase tracking-wide">
@@ -400,74 +528,210 @@ export default function CustomerManagement() {
                         </div>
 
                         {/* Form Body */}
-                        <form onSubmit={handleFormSubmit} className="p-6 space-y-4 text-xs font-semibold text-slate-700">
-                            {/* Name */}
-                            <div className="space-y-1">
-                                <label className="text-slate-400 font-bold uppercase tracking-wider">Nama Lengkap</label>
-                                <input
-                                    type="text"
-                                    required
-                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
-                                        apiErrors.name ? 'border-rose-500' : 'border-slate-200'
-                                    }`}
-                                    placeholder="Masukkan nama lengkap customer"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                />
-                                {apiErrors.name && (
-                                    <p className="text-rose-500 text-[10px] font-bold">{apiErrors.name[0]}</p>
-                                )}
+                        <form onSubmit={handleFormSubmit} className="p-6 space-y-4 text-xs font-semibold text-slate-700 max-h-[80vh] overflow-y-auto">
+                            {/* Name & Email */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase tracking-wider">Nama Lengkap</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
+                                            apiErrors.name ? 'border-rose-500' : 'border-slate-200'
+                                        }`}
+                                        placeholder="Masukkan nama lengkap customer"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    />
+                                    {apiErrors.name && (
+                                        <p className="text-rose-500 text-[10px] font-bold">{apiErrors.name[0]}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase tracking-wider">Alamat Email</label>
+                                    <input
+                                        type="email"
+                                        className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
+                                            apiErrors.email ? 'border-rose-500' : 'border-slate-200'
+                                        }`}
+                                        placeholder="contoh@email.com (opsional)"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    />
+                                    {apiErrors.email && (
+                                        <p className="text-rose-500 text-[10px] font-bold">{apiErrors.email[0]}</p>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Email */}
-                            <div className="space-y-1">
-                                <label className="text-slate-400 font-bold uppercase tracking-wider">Alamat Email</label>
-                                <input
-                                    type="email"
-                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
-                                        apiErrors.email ? 'border-rose-500' : 'border-slate-200'
-                                    }`}
-                                    placeholder="contoh@email.com (opsional)"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                />
-                                {apiErrors.email && (
-                                    <p className="text-rose-500 text-[10px] font-bold">{apiErrors.email[0]}</p>
-                                )}
+                            {/* Phone & Postal Code */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase tracking-wider">Nomor Telepon/HP</label>
+                                    <input
+                                        type="text"
+                                        className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
+                                            apiErrors.phone ? 'border-rose-500' : 'border-slate-200'
+                                        }`}
+                                        placeholder="08xxxxxxxxxx (opsional)"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                    />
+                                    {apiErrors.phone && (
+                                        <p className="text-rose-500 text-[10px] font-bold">{apiErrors.phone[0]}</p>
+                                    )}
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase tracking-wider">Kode Pos</label>
+                                    <input
+                                        type="text"
+                                        className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
+                                            apiErrors.postal_code ? 'border-rose-500' : 'border-slate-200'
+                                        }`}
+                                        placeholder="12345 (opsional)"
+                                        value={formData.postal_code || ''}
+                                        onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                                    />
+                                    {apiErrors.postal_code && (
+                                        <p className="text-rose-500 text-[10px] font-bold">{apiErrors.postal_code[0]}</p>
+                                    )}
+                                </div>
                             </div>
 
-                            {/* Phone */}
-                            <div className="space-y-1">
-                                <label className="text-slate-400 font-bold uppercase tracking-wider">Nomor Telepon/HP</label>
-                                <input
-                                    type="text"
-                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
-                                        apiErrors.phone ? 'border-rose-500' : 'border-slate-200'
-                                    }`}
-                                    placeholder="08xxxxxxxxxx (opsional)"
-                                    value={formData.phone}
-                                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                />
-                                {apiErrors.phone && (
-                                    <p className="text-rose-500 text-[10px] font-bold">{apiErrors.phone[0]}</p>
-                                )}
+                            {/* Province & City */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Provinsi</label>
+                                    <select
+                                        className="w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 border-slate-200 bg-white"
+                                        value={formData.province}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            province: e.target.value,
+                                            city: '',
+                                            district: '',
+                                            village: ''
+                                        })}
+                                        disabled={loadingRegions.provinces}
+                                    >
+                                        <option value="">Pilih Provinsi</option>
+                                        {provinces.map(p => (
+                                            <option key={p.id} value={p.name}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Kota / Kabupaten</label>
+                                    <select
+                                        className="w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 border-slate-200 bg-white"
+                                        value={formData.city}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            city: e.target.value,
+                                            district: '',
+                                            village: ''
+                                        })}
+                                        disabled={!formData.province || loadingRegions.cities}
+                                    >
+                                        <option value="">Pilih Kota/Kabupaten</option>
+                                        {cities.map(c => (
+                                            <option key={c.id} value={c.name}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
 
-                            {/* Address */}
-                            <div className="space-y-1">
-                                <label className="text-slate-400 font-bold uppercase tracking-wider">Alamat Lengkap</label>
-                                <textarea
-                                    className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 min-h-[80px] ${
-                                        apiErrors.address ? 'border-rose-500' : 'border-slate-200'
-                                    }`}
-                                    placeholder="Masukkan alamat lengkap (opsional)"
-                                    value={formData.address}
-                                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                />
-                                {apiErrors.address && (
-                                    <p className="text-rose-500 text-[10px] font-bold">{apiErrors.address[0]}</p>
-                                )}
+                            {/* District & Village */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Kecamatan</label>
+                                    <select
+                                        className="w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 border-slate-200 bg-white"
+                                        value={formData.district}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            district: e.target.value,
+                                            village: ''
+                                        })}
+                                        disabled={!formData.city || loadingRegions.districts}
+                                    >
+                                        <option value="">Pilih Kecamatan</option>
+                                        {districts.map(d => (
+                                            <option key={d.id} value={d.name}>{d.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Desa / Kelurahan</label>
+                                    <select
+                                        className="w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 border-slate-200 bg-white"
+                                        value={formData.village}
+                                        onChange={(e) => setFormData({
+                                            ...formData,
+                                            village: e.target.value
+                                        })}
+                                        disabled={!formData.district || loadingRegions.villages}
+                                    >
+                                        <option value="">Pilih Desa/Kelurahan</option>
+                                        {villages.map(v => (
+                                            <option key={v.id} value={v.name}>{v.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
+
+                             {/* Address */}
+                             <div className="space-y-1">
+                                 <label className="text-slate-400 font-bold uppercase tracking-wider">Detail Alamat Lengkap (Jalan, Blok, No. Rumah, RT/RW)</label>
+                                 <textarea
+                                     className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 min-h-[70px] ${
+                                         apiErrors.address ? 'border-rose-500' : 'border-slate-200'
+                                     }`}
+                                     placeholder="Masukkan detail alamat customer"
+                                     value={formData.address}
+                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                 />
+                                 {apiErrors.address && (
+                                     <p className="text-rose-500 text-[10px] font-bold">{apiErrors.address[0]}</p>
+                                 )}
+                             </div>
+
+                             {/* Coordinates */}
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                 {/* Latitude */}
+                                 <div className="space-y-1">
+                                     <label className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Latitude</label>
+                                     <input
+                                         type="text"
+                                         className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
+                                             apiErrors.latitude ? 'border-rose-500' : 'border-slate-200'
+                                         }`}
+                                         placeholder="-6.1234 (opsional)"
+                                         value={formData.latitude || ''}
+                                         onChange={(e) => setFormData({ ...formData, latitude: e.target.value })}
+                                     />
+                                     {apiErrors.latitude && (
+                                         <p className="text-rose-500 text-[9px] font-bold">{apiErrors.latitude[0]}</p>
+                                     )}
+                                 </div>
+
+                                 {/* Longitude */}
+                                 <div className="space-y-1">
+                                     <label className="text-slate-400 font-bold uppercase tracking-wider text-[10px]">Longitude</label>
+                                     <input
+                                         type="text"
+                                         className={`w-full px-3.5 py-2.5 border rounded-xl font-medium focus:outline-hidden focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-slate-800 ${
+                                             apiErrors.longitude ? 'border-rose-500' : 'border-slate-200'
+                                         }`}
+                                         placeholder="106.1234 (opsional)"
+                                         value={formData.longitude || ''}
+                                         onChange={(e) => setFormData({ ...formData, longitude: e.target.value })}
+                                     />
+                                     {apiErrors.longitude && (
+                                         <p className="text-rose-500 text-[9px] font-bold">{apiErrors.longitude[0]}</p>
+                                     )}
+                                 </div>
+                             </div>
 
                             {/* Submit Button */}
                             <div className="pt-4 border-t border-slate-100 flex items-center justify-end space-x-2">

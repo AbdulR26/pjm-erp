@@ -14,6 +14,10 @@ use App\Http\Controllers\Admin\Api\StockController;
 use App\Http\Controllers\Admin\Api\BannerController;
 use App\Http\Controllers\Admin\Api\SettingController;
 use App\Http\Controllers\Admin\Api\VoucherController as AdminVoucherController;
+use App\Http\Controllers\Admin\Api\ChatController;
+use App\Http\Controllers\Admin\Api\SupplierController;
+use App\Http\Controllers\Admin\Api\PurchaseOrderController;
+use App\Http\Controllers\Admin\Api\DashboardController;
 use App\Http\Controllers\CustomerAuthController;
 
 // Rute Halaman Depan E-Commerce (React Customer App)
@@ -41,16 +45,37 @@ Route::prefix('api')->group(function () {
     Route::post('/auth/register', [CustomerAuthController::class, 'register']);
     Route::post('/auth/login', [CustomerAuthController::class, 'login']);
     Route::put('/auth/profile', [CustomerAuthController::class, 'updateProfile']);
+    Route::get('/auth/addresses', [CustomerAuthController::class, 'getAddresses']);
+    Route::post('/auth/addresses', [CustomerAuthController::class, 'storeAddress']);
+    Route::put('/auth/addresses/{id}', [CustomerAuthController::class, 'updateAddress']);
+    Route::delete('/auth/addresses/{id}', [CustomerAuthController::class, 'destroyAddress']);
+    Route::post('/auth/addresses/{id}/primary', [CustomerAuthController::class, 'setPrimaryAddress']);
 
     // ── E-Commerce Orders ──────────────────────────────────────────────────────
     Route::get('/orders', [App\Http\Controllers\PublicOrderController::class, 'index']);
     Route::post('/orders', [App\Http\Controllers\PublicOrderController::class, 'store']);
     Route::post('/orders/{id}/pay-simulate', [App\Http\Controllers\PublicOrderController::class, 'paySimulate']);
+    Route::post('/orders/{id}/ship-simulate', [App\Http\Controllers\PublicOrderController::class, 'shipSimulate']);
     Route::post('/orders/{id}/payment', [App\Http\Controllers\PublicOrderController::class, 'getOrCreatePayment']);
+    Route::get('/orders/{id}/shipment', [App\Http\Controllers\PublicOrderController::class, 'getShipmentTracking']);
+    Route::post('/orders/{id}/reviews', [App\Http\Controllers\PublicOrderController::class, 'storeReview']);
+    Route::post('/shipment/rates', [App\Http\Controllers\PublicOrderController::class, 'getRates']);
+
+    // ── Customer Notifications ────────────────────────────────────────────────
+    Route::get('/notifications', [App\Http\Controllers\CustomerNotificationController::class, 'index']);
+    Route::post('/notifications/{id}/read', [App\Http\Controllers\CustomerNotificationController::class, 'markAsRead']);
+    Route::post('/notifications/read-all', [App\Http\Controllers\CustomerNotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/{id}', [App\Http\Controllers\CustomerNotificationController::class, 'destroy']);
 
     // ── E-Commerce Vouchers ────────────────────────────────────────────────────
     Route::get('/vouchers', [App\Http\Controllers\PublicOrderController::class, 'vouchers']);
     Route::post('/vouchers/apply', [App\Http\Controllers\PublicOrderController::class, 'applyVoucher']);
+
+    // ── E-Commerce Chat ────────────────────────────────────────────────────────
+    Route::get('/chats', [App\Http\Controllers\PublicChatController::class, 'index']);
+    Route::post('/chats', [App\Http\Controllers\PublicChatController::class, 'store']);
+    Route::post('/chats/read', [App\Http\Controllers\PublicChatController::class, 'read']);
+    Route::post('/chats/auth', [App\Http\Controllers\PublicChatController::class, 'auth']);
 });
 
 // ─── Customer Social Login ──────────────────────────────────────────────────
@@ -65,6 +90,7 @@ Route::prefix('adminv1/api')->group(function () {
 
     Route::middleware('auth')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
+        Route::get('/dashboard/stats', [DashboardController::class, 'index']);
         Route::post('/logout', [AuthController::class, 'logout']);
 
         // ── Users & Customers ────────────────────────────────────────────────
@@ -113,15 +139,31 @@ Route::prefix('adminv1/api')->group(function () {
         Route::delete('/stock/mutations/{mutationId}', [StockController::class, 'destroyMutation']);
 
         // ── Orders ───────────────────────────────────────────────────────────
+        Route::get('/orders/print-invoices', [OrderController::class, 'printInvoices']);
+        Route::get('/orders/print-resis', [OrderController::class, 'printResis']);
         Route::get('/orders/{id}/print-invoice', [OrderController::class, 'printInvoice']);
         Route::get('/orders/{id}/print-resi', [OrderController::class, 'printResi']);
         Route::apiResource('/orders', OrderController::class);
+
+        // ── Suppliers ────────────────────────────────────────────────────────
+        Route::apiResource('/suppliers', SupplierController::class);
+
+        // ── Purchase Orders ──────────────────────────────────────────────────
+        Route::get('/purchase-orders/{id}/print', [PurchaseOrderController::class, 'printPO']);
+        Route::post('/purchase-orders/{id}/receive', [PurchaseOrderController::class, 'receive']);
+        Route::apiResource('/purchase-orders', PurchaseOrderController::class);
 
         // ── Banners & Settings ───────────────────────────────────────────────
         Route::post('/banners/upload', [BannerController::class, 'upload']);
         Route::apiResource('/banners', BannerController::class);
         Route::get('/settings', [SettingController::class, 'index']);
         Route::post('/settings', [SettingController::class, 'update']);
+
+        // ── Customer Chat Support ────────────────────────────────────────────
+        Route::get('/chats', [ChatController::class, 'index']);
+        Route::get('/chats/{customerId}', [ChatController::class, 'show']);
+        Route::post('/chats/{customerId}', [ChatController::class, 'store']);
+        Route::post('/chats/{customerId}/read', [ChatController::class, 'read']);
 
         // ── Payments (per-order) ─────────────────────────────────────────────
         // POST   /orders/{orderId}/payment        → Create payment + Snap token
@@ -136,6 +178,7 @@ Route::prefix('adminv1/api')->group(function () {
         // POST   /orders/{orderId}/shipment       → Book shipment
         // GET    /orders/{orderId}/shipment       → Get shipment detail (add ?sync=1 to pull tracking)
         // POST   /orders/{orderId}/shipment/cancel → Cancel shipment
+        Route::post('/shipments/bulk-store', [ShipmentController::class, 'bulkStore']);
         Route::get('/orders/{orderId}/shipment/rates', [ShipmentController::class, 'rates']);
         Route::post('/orders/{orderId}/shipment', [ShipmentController::class, 'store']);
         Route::get('/orders/{orderId}/shipment', [ShipmentController::class, 'show']);

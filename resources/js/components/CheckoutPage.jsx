@@ -1,26 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Truck, ShieldCheck, Wallet, ChevronRight, Check, X, Copy, QrCode, CreditCard, Tag, Store } from 'lucide-react';
 
-const COURIERS = [
-    { id: 'jnt',         name: 'J&T Express',       service: 'Reguler',              price: 12000, eta: '2-3 hari' },
-    { id: 'jne',         name: 'JNE Express',        service: 'Reguler',              price: 15000, eta: '2-4 hari' },
-    { id: 'sicepat',     name: 'SiCepat Halu',       service: 'Hemat',                price: 9000,  eta: '3-5 hari' },
-    { id: 'pjm_instant', name: 'PJM Instant Kurir',  service: 'Instant (Surabaya)',   price: 25000, eta: 'Hari ini' },
-];
-
-
 export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser, settings }) {
-    const [selectedCourier, setSelectedCourier]   = useState(COURIERS[0]);
+    const [couriers, setCouriers] = useState([]);
+    const [selectedCourier, setSelectedCourier]   = useState(null);
+    const [loadingRates, setLoadingRates]         = useState(false);
+    const [ratesError, setRatesError]             = useState('');
     const [isEditingAddress, setIsEditingAddress] = useState(false);
     const [address, setAddress] = useState(() => ({
         name:   currentUser?.name || '',
-        phone:  '',
-        detail: '',
+        phone:  currentUser?.phone || '',
+        detail: currentUser?.address || '',
+        postal_code: currentUser?.postal_code || '',
+        latitude: currentUser?.latitude || '',
+        longitude: currentUser?.longitude || '',
     }));
     const [tempAddress, setTempAddress] = useState({ ...address });
 
     const [loading,       setLoading]       = useState(false);
 
+    // Customer Multiple Addresses State
+    const [addresses, setAddresses] = useState([]);
+    const [addressesLoading, setAddressesLoading] = useState(false);
+    const [isAddressSelectModalOpen, setIsAddressSelectModalOpen] = useState(false);
+    const [isAddrModalOpen, setIsAddrModalOpen] = useState(false);
+    const [addrModalMode, setAddrModalMode] = useState('create'); // 'create' | 'edit'
+    const [editingAddrId, setEditingAddrId] = useState(null);
+
+    // Form fields for address modal
+    const [addrName, setAddrName] = useState('');
+    const [addrPhone, setAddrPhone] = useState('');
+    const [addrProvince, setAddrProvince] = useState('');
+    const [addrCity, setAddrCity] = useState('');
+    const [addrDistrict, setAddrDistrict] = useState('');
+    const [addrVillage, setAddrVillage] = useState('');
+    const [addrDetail, setAddrDetail] = useState('');
+    const [addrPostalCode, setAddrPostalCode] = useState('');
+    const [addrLatitude, setAddrLatitude] = useState('');
+    const [addrLongitude, setAddrLongitude] = useState('');
+    const [addrIsPrimary, setAddrIsPrimary] = useState(false);
+
+    // Regions selection data
+    const [provinces, setProvinces] = useState([]);
+    const [cities, setCities] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [villages, setVillages] = useState([]);
+    const [loadingRegions, setLoadingRegions] = useState({ provinces: false, cities: false, districts: false, villages: false });
+    const [addrError, setAddrError] = useState('');
+    const [savingAddr, setSavingAddr] = useState(false);
 
     const [vouchers,          setVouchers]          = useState([]);
     const [selectedVoucher,   setSelectedVoucher]   = useState(null);
@@ -28,6 +55,219 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
     const [showVoucherDrawer, setShowVoucherDrawer] = useState(false);
     const [voucherInputCode,  setVoucherInputCode]  = useState('');
     const [voucherError,      setVoucherError]      = useState('');
+
+    const fetchAddresses = async () => {
+        setAddressesLoading(true);
+        try {
+            const res = await fetch('/api/auth/addresses');
+            if (res.ok) {
+                const data = await res.json();
+                setAddresses(data);
+                if (data.length > 0) {
+                    const primary = data.find(addr => addr.is_primary) || data[0];
+                    setAddress({
+                        id: primary.id,
+                        name: primary.name,
+                        phone: primary.phone,
+                        detail: primary.address + ', Kel. ' + primary.village + ', Kec. ' + primary.district + ', ' + primary.city + ', ' + primary.province,
+                        postal_code: primary.postal_code,
+                        latitude: primary.latitude || '',
+                        longitude: primary.longitude || '',
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Gagal mengambil data alamat:", e);
+        } finally {
+            setAddressesLoading(false);
+        }
+    };
+
+    const fetchProvinces = async () => {
+        setLoadingRegions(prev => ({ ...prev, provinces: true }));
+        try {
+            const res = await fetch('https://www.emsifa.com/api-wilayah-indonesia/api/provinces.json');
+            if (res.ok) {
+                const data = await res.json();
+                setProvinces(data);
+            }
+        } catch (e) {
+            console.error("Gagal mengambil data provinsi:", e);
+        } finally {
+            setLoadingRegions(prev => ({ ...prev, provinces: false }));
+        }
+    };
+
+    const fetchCities = async (provinceId) => {
+        setLoadingRegions(prev => ({ ...prev, cities: true }));
+        try {
+            const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/regencies/${provinceId}.json`);
+            if (res.ok) {
+                const data = await res.json();
+                setCities(data);
+            }
+        } catch (e) {
+            console.error("Gagal mengambil data kota:", e);
+        } finally {
+            setLoadingRegions(prev => ({ ...prev, cities: false }));
+        }
+    };
+
+    const fetchDistricts = async (cityId) => {
+        setLoadingRegions(prev => ({ ...prev, districts: true }));
+        try {
+            const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/districts/${cityId}.json`);
+            if (res.ok) {
+                const data = await res.json();
+                setDistricts(data);
+            }
+        } catch (e) {
+            console.error("Gagal mengambil data kecamatan:", e);
+        } finally {
+            setLoadingRegions(prev => ({ ...prev, districts: false }));
+        }
+    };
+
+    const fetchVillages = async (districtId) => {
+        setLoadingRegions(prev => ({ ...prev, villages: true }));
+        try {
+            const res = await fetch(`https://www.emsifa.com/api-wilayah-indonesia/api/villages/${districtId}.json`);
+            if (res.ok) {
+                const data = await res.json();
+                setVillages(data);
+            }
+        } catch (e) {
+            console.error("Gagal mengambil data desa:", e);
+        } finally {
+            setLoadingRegions(prev => ({ ...prev, villages: false }));
+        }
+    };
+
+    // Auto-fetch child region lists when parent state changes in edit mode
+    useEffect(() => {
+        if (!isAddrModalOpen || provinces.length === 0) return;
+        if (addrProvince) {
+            const foundProv = provinces.find(p => p.name.toUpperCase() === addrProvince.toUpperCase());
+            if (foundProv) {
+                fetchCities(foundProv.id);
+            }
+        }
+    }, [addrProvince, provinces, isAddrModalOpen]);
+
+    useEffect(() => {
+        if (!isAddrModalOpen || cities.length === 0) return;
+        if (addrCity) {
+            const foundCity = cities.find(c => c.name.toUpperCase() === addrCity.toUpperCase());
+            if (foundCity) {
+                fetchDistricts(foundCity.id);
+            }
+        }
+    }, [addrCity, cities, isAddrModalOpen]);
+
+    useEffect(() => {
+        if (!isAddrModalOpen || districts.length === 0) return;
+        if (addrDistrict) {
+            const foundDist = districts.find(d => d.name.toUpperCase() === addrDistrict.toUpperCase());
+            if (foundDist) {
+                fetchVillages(foundDist.id);
+            }
+        }
+    }, [addrDistrict, districts, isAddrModalOpen]);
+
+    const handleOpenCreateAddrModal = () => {
+        setAddrModalMode('create');
+        setEditingAddrId(null);
+        setAddrName(currentUser?.name || '');
+        setAddrPhone(currentUser?.phone || '');
+        setAddrProvince('');
+        setAddrCity('');
+        setAddrDistrict('');
+        setAddrVillage('');
+        setAddrDetail('');
+        setAddrPostalCode('');
+        setAddrLatitude('');
+        setAddrLongitude('');
+        setAddrIsPrimary(addresses.length === 0);
+        setAddrError('');
+        setIsAddrModalOpen(true);
+        fetchProvinces();
+    };
+
+    const handleOpenEditAddrModal = async (addr) => {
+        setAddrModalMode('edit');
+        setEditingAddrId(addr.id);
+        setAddrName(addr.name || '');
+        setAddrPhone(addr.phone || '');
+        setAddrDetail(addr.address || '');
+        setAddrPostalCode(addr.postal_code || '');
+        setAddrLatitude(addr.latitude || '');
+        setAddrLongitude(addr.longitude || '');
+        setAddrIsPrimary(addr.is_primary || false);
+
+        setAddrProvince(addr.province || '');
+        setAddrCity(addr.city || '');
+        setAddrDistrict(addr.district || '');
+        setAddrVillage(addr.village || '');
+        setAddrError('');
+
+        setIsAddrModalOpen(true);
+        await fetchProvinces();
+    };
+
+    const handleAddressSubmit = async (e) => {
+        e.preventDefault();
+        setSavingAddr(true);
+        setAddrError('');
+
+        const payload = {
+            name: addrName,
+            phone: addrPhone,
+            province: addrProvince,
+            city: addrCity,
+            district: addrDistrict,
+            village: addrVillage,
+            address: addrDetail,
+            postal_code: addrPostalCode,
+            latitude: addrLatitude ? parseFloat(addrLatitude) : null,
+            longitude: addrLongitude ? parseFloat(addrLongitude) : null,
+            is_primary: addrIsPrimary,
+        };
+
+        try {
+            const url = addrModalMode === 'create' ? '/api/auth/addresses' : `/api/auth/addresses/${editingAddrId}`;
+            const method = addrModalMode === 'create' ? 'POST' : 'PUT';
+            const res = await fetch(url, {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setIsAddrModalOpen(false);
+                setIsAddressSelectModalOpen(false);
+                await fetchAddresses();
+                setAddress({
+                    id: data.address.id,
+                    name: data.address.name,
+                    phone: data.address.phone,
+                    detail: data.address.address + ', Kel. ' + data.address.village + ', Kec. ' + data.address.district + ', ' + data.address.city + ', ' + data.address.province,
+                    postal_code: data.address.postal_code,
+                    latitude: data.address.latitude || '',
+                    longitude: data.address.longitude || '',
+                });
+            } else {
+                setAddrError(data.message || 'Gagal menyimpan alamat.');
+            }
+        } catch (err) {
+            setAddrError('Terjadi kesalahan jaringan.');
+        } finally {
+            setSavingAddr(false);
+        }
+    };
 
     useEffect(() => {
         if (!settings) return;
@@ -55,10 +295,14 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                 if (Array.isArray(data)) setVouchers(data);
             })
             .catch(err => console.error('Gagal mengambil data voucher:', err));
-    }, []);
+
+        if (currentUser) {
+            fetchAddresses();
+        }
+    }, [currentUser]);
 
     const subtotal      = cart.reduce((t, i) => t + i.product.price * i.quantity, 0);
-    const shippingFee   = selectedCourier.price;
+    const shippingFee   = selectedCourier ? selectedCourier.price : 0;
     const total         = Math.max(0, subtotal + shippingFee - voucherDiscount);
 
     const handleSaveAddress = (e) => {
@@ -99,6 +343,72 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
         setSelectedVoucher(null);
         setVoucherDiscount(0);
     };
+
+    const fetchRates = async (addr) => {
+        if (!addr.postal_code) return;
+        setLoadingRates(true);
+        setRatesError('');
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const items = cart.map(item => ({
+                product_id: item.product.id,
+                variant_name: item.variant,
+                quantity: item.quantity
+            }));
+            const response = await fetch('/api/shipment/rates', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({
+                    postal_code: addr.postal_code,
+                    latitude: addr.latitude || null,
+                    longitude: addr.longitude || null,
+                    items
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Gagal mengambil ongkir');
+            }
+
+            const rawRates = data.rates || [];
+            const formattedCouriers = rawRates.map(rate => ({
+                id: rate.courier_code,
+                name: rate.courier_name,
+                service: rate.courier_service_name,
+                price: rate.price,
+                eta: `${rate.duration} ${rate.duration.toLowerCase().includes('hari') ? '' : 'hari'}`,
+                courier_service_code: rate.courier_service_code
+            }));
+
+            setCouriers(formattedCouriers);
+            if (formattedCouriers.length > 0) {
+                setSelectedCourier(formattedCouriers[0]);
+            } else {
+                setSelectedCourier(null);
+                setRatesError('Tidak ada layanan pengiriman yang tersedia untuk area ini.');
+            }
+        } catch (err) {
+            console.error(err);
+            setRatesError(err.message || 'Gagal menghitung ongkos kirim. Silakan periksa kembali kode pos Anda.');
+            setCouriers([]);
+            setSelectedCourier(null);
+        } finally {
+            setLoadingRates(false);
+        }
+    };
+
+    useEffect(() => {
+        if (address.postal_code) {
+            fetchRates(address);
+        } else {
+            setCouriers([]);
+            setSelectedCourier(null);
+        }
+    }, [address, cart]);
 
     const handlePlaceOrder = async () => {
         setLoading(true);
@@ -194,7 +504,7 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
         }
     };
 
-    const addressFilled = address.name && address.phone && address.detail;
+    const addressFilled = address.name && address.phone && address.detail && address.postal_code;
 
     return (
         <>
@@ -203,6 +513,8 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                 .scp * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
                 @keyframes scp-fadein { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
                 @keyframes scp-modal { from { opacity: 0; transform: scale(0.96) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+                @keyframes scp-spin { to { transform: rotate(360deg); } }
+                .scp-spin { animation: scp-spin 0.8s linear infinite; }
                 .scp-wrap { animation: scp-fadein 0.3s ease; }
 
                 /* Page layout */
@@ -599,39 +911,31 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                                 <span className="scp-card-title">Alamat Pengiriman</span>
                             </div>
                             <div className="scp-card-body">
-                                {isEditingAddress ? (
-                                    <form onSubmit={handleSaveAddress}>
-                                        <div className="scp-input-grid">
-                                            <input
-                                                className="scp-input"
-                                                required placeholder="Nama Penerima"
-                                                value={tempAddress.name}
-                                                onChange={e => setTempAddress({ ...tempAddress, name: e.target.value })}
-                                            />
-                                            <input
-                                                className="scp-input"
-                                                required placeholder="Nomor Telepon"
-                                                value={tempAddress.phone}
-                                                onChange={e => setTempAddress({ ...tempAddress, phone: e.target.value })}
-                                            />
-                                        </div>
-                                        <textarea
-                                            className="scp-input"
-                                            required rows={2}
-                                            placeholder="Detail Alamat Lengkap (Jalan, Kecamatan, Kota)"
-                                            style={{ resize: 'none', marginBottom: 10 }}
-                                            value={tempAddress.detail}
-                                            onChange={e => setTempAddress({ ...tempAddress, detail: e.target.value })}
-                                        />
-                                        <div>
-                                            <button type="submit" className="scp-save-btn">Simpan Alamat</button>
-                                            <button
-                                                type="button"
-                                                className="scp-cancel-btn"
-                                                onClick={() => { setTempAddress({ ...address }); setIsEditingAddress(false); }}
-                                            >Batal</button>
-                                        </div>
-                                    </form>
+                                {addressesLoading ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0' }}>
+                                        <div className="scp-spin" style={{ width: 18, height: 18, border: '2.5px solid #f3f3f3', borderTop: '2.5px solid #c0001a', borderRadius: '50%' }}></div>
+                                        <span style={{ fontSize: 12, color: '#666' }}>Memuat daftar alamat...</span>
+                                    </div>
+                                ) : addresses.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '16px 0' }}>
+                                        <p style={{ fontSize: '12.5px', color: '#666', marginBottom: '12px' }}>Belum ada alamat pengiriman disimpan.</p>
+                                        <button 
+                                            type="button"
+                                            onClick={handleOpenCreateAddrModal}
+                                            style={{
+                                                background: '#c0001a',
+                                                color: '#fff',
+                                                fontWeight: '750',
+                                                fontSize: '12px',
+                                                padding: '8px 16px',
+                                                border: 'none',
+                                                borderRadius: '4px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            + Tambah Alamat Baru
+                                        </button>
+                                    </div>
                                 ) : (
                                     <div className="scp-addr-filled">
                                         <div className="scp-addr-dot" />
@@ -640,9 +944,19 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                                                 <span className="scp-addr-name">{address.name || '—'}</span>
                                                 {address.phone && <span className="scp-addr-phone">({address.phone})</span>}
                                             </div>
-                                            <div className="scp-addr-detail">{address.detail || <span style={{ color: '#c0001a', fontSize: 12 }}>Alamat belum diisi</span>}</div>
+                                            <div className="scp-addr-detail">
+                                                {address.detail || <span style={{ color: '#c0001a', fontSize: 12 }}>Alamat belum diisi</span>}
+                                                {address.postal_code && (
+                                                    <div style={{ color: '#666', fontSize: 11.5, marginTop: 4, fontWeight: 500 }}>
+                                                        Kode Pos: <span style={{ fontWeight: 700, color: '#222' }}>{address.postal_code}</span>
+                                                        {address.latitude && address.longitude && ` (${address.latitude}, ${address.longitude})`}
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
-                                        <button className="scp-addr-change" onClick={() => setIsEditingAddress(true)}>Ubah</button>
+                                        <button className="scp-addr-change" onClick={() => setIsAddressSelectModalOpen(true)}>
+                                            Pilih Alamat Lain
+                                        </button>
                                     </div>
                                 )}
                             </div>
@@ -680,24 +994,43 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                                 <span className="scp-card-title">Pilih Pengiriman</span>
                             </div>
                             <div className="scp-card-body">
-                                {COURIERS.map(cour => (
-                                    <button
-                                        key={cour.id}
-                                        className={`scp-courier-option ${selectedCourier.id === cour.id ? 'active' : ''}`}
-                                        onClick={() => setSelectedCourier(cour)}
-                                        style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
-                                    >
-                                        <div className="scp-courier-radio">
-                                            {selectedCourier.id === cour.id && <div className="scp-courier-dot" />}
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div className="scp-courier-name">{cour.name}</div>
-                                            <div className="scp-courier-service">{cour.service}</div>
-                                            <span className="scp-courier-eta">Estimasi {cour.eta}</span>
-                                        </div>
-                                        <div className="scp-courier-price">Rp {cour.price.toLocaleString('id-ID')}</div>
-                                    </button>
-                                ))}
+                                {loadingRates ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '16px 0', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div className="scp-spin" style={{ width: 24, height: 24, border: '3px solid #f3f3f3', borderTop: '3px solid #c0001a', borderRadius: '50%' }}></div>
+                                        <span style={{ fontSize: 12, color: '#666', marginTop: 4 }}>Memeriksa ongkos kirim...</span>
+                                    </div>
+                                ) : ratesError ? (
+                                    <div style={{ padding: '12px', border: '1px solid #ffcccc', background: '#fff0f0', color: '#c0001a', borderRadius: 4, fontSize: 12, fontWeight: 600 }}>
+                                        ⚠️ {ratesError}
+                                    </div>
+                                ) : !address.postal_code ? (
+                                    <div style={{ padding: '16px', border: '1px dashed #ddd', color: '#666', borderRadius: 4, fontSize: 12, textAlign: 'center' }}>
+                                        Silakan lengkapi alamat dan <strong>Kode Pos</strong> pengiriman terlebih dahulu untuk menghitung ongkos kirim.
+                                    </div>
+                                ) : couriers.length === 0 ? (
+                                    <div style={{ padding: '16px', border: '1px dashed #ddd', color: '#666', borderRadius: 4, fontSize: 12, textAlign: 'center' }}>
+                                        Tidak ada layanan pengiriman yang tersedia untuk alamat ini.
+                                    </div>
+                                ) : (
+                                    couriers.map(cour => (
+                                        <button
+                                            key={`${cour.id}-${cour.service}`}
+                                            className={`scp-courier-option ${selectedCourier && selectedCourier.id === cour.id && selectedCourier.service === cour.service ? 'active' : ''}`}
+                                            onClick={() => setSelectedCourier(cour)}
+                                            style={{ width: '100%', border: 'none', textAlign: 'left', cursor: 'pointer' }}
+                                        >
+                                            <div className="scp-courier-radio">
+                                                {selectedCourier && selectedCourier.id === cour.id && selectedCourier.service === cour.service && <div className="scp-courier-dot" />}
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div className="scp-courier-name">{cour.name}</div>
+                                                <div className="scp-courier-service">{cour.service}</div>
+                                                <span className="scp-courier-eta">Estimasi {cour.eta}</span>
+                                            </div>
+                                            <div className="scp-courier-price">Rp {cour.price.toLocaleString('id-ID')}</div>
+                                        </button>
+                                    ))
+                                )}
                             </div>
                         </div>
 
@@ -824,10 +1157,10 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                     <button
                         className="scp-order-btn"
                         onClick={handlePlaceOrder}
-                        disabled={!addressFilled || loading}
-                        title={!addressFilled ? 'Lengkapi alamat pengiriman terlebih dahulu' : ''}
+                        disabled={!addressFilled || !selectedCourier || loading || loadingRates}
+                        title={!addressFilled ? 'Lengkapi alamat pengiriman terlebih dahulu' : (!selectedCourier ? 'Pilih metode pengiriman terlebih dahulu' : '')}
                     >
-                        {loading ? 'Membuat Pesanan...' : (!addressFilled ? 'Isi Alamat Dulu' : 'Buat Pesanan')}
+                        {loading ? 'Membuat Pesanan...' : (!addressFilled ? 'Isi Alamat Dulu' : (!selectedCourier ? 'Pilih Pengiriman' : 'Buat Pesanan'))}
                     </button>
                 </div>
             </div>
@@ -925,6 +1258,400 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                                 })
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Address Selector Modal ── */}
+            {isAddressSelectModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 9999,
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '16px'
+                }}>
+                    <div style={{
+                        background: '#fff',
+                        width: '100%',
+                        maxWidth: '680px',
+                        borderRadius: '8px',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <div style={{
+                            background: '#c0001a',
+                            padding: '16px 20px',
+                            color: '#fff',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <span style={{ fontSize: '15px', fontWeight: 800 }}>Pilih Alamat Pengiriman</span>
+                            <button 
+                                onClick={() => setIsAddressSelectModalOpen(false)}
+                                style={{ background: 'none', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '60vh', overflowY: 'auto' }}>
+                            <button 
+                                type="button"
+                                onClick={handleOpenCreateAddrModal}
+                                style={{
+                                    border: '1.5px dashed #c0001a',
+                                    borderRadius: '6px',
+                                    color: '#c0001a',
+                                    background: '#fff5f5',
+                                    padding: '12px',
+                                    fontSize: '13px',
+                                    fontWeight: '750',
+                                    cursor: 'pointer',
+                                    textAlign: 'center',
+                                    width: '100%'
+                                }}
+                            >
+                                + Tambah Alamat Baru
+                            </button>
+
+                            {addresses.map((addr) => {
+                                const isActive = address.id === addr.id;
+                                return (
+                                    <div 
+                                        key={addr.id}
+                                        onClick={() => {
+                                            setAddress({
+                                                id: addr.id,
+                                                name: addr.name,
+                                                phone: addr.phone,
+                                                detail: addr.address + ', Kel. ' + addr.village + ', Kec. ' + addr.district + ', ' + addr.city + ', ' + addr.province,
+                                                postal_code: addr.postal_code,
+                                                latitude: addr.latitude || '',
+                                                longitude: addr.longitude || '',
+                                            });
+                                            setIsAddressSelectModalOpen(false);
+                                        }}
+                                        style={{
+                                            padding: '14px 16px',
+                                            border: isActive ? '2px solid #c0001a' : '1px solid #eef0f2',
+                                            background: isActive ? '#fffcfc' : '#fff',
+                                            borderRadius: '6px',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'flex-start',
+                                            gap: '12px',
+                                            borderLeft: isActive ? '4px solid #c0001a' : '1px solid #eef0f2'
+                                        }}
+                                    >
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '13px', fontWeight: 700, color: '#222' }}>{addr.name}</span>
+                                                <span style={{ fontSize: '12px', color: '#666', fontWeight: 500 }}>({addr.phone})</span>
+                                                {addr.is_primary && (
+                                                    <span style={{
+                                                        fontSize: '9px',
+                                                        fontWeight: 750,
+                                                        background: '#c0001a',
+                                                        padding: '1px 5px',
+                                                        borderRadius: '2px',
+                                                        color: '#fff',
+                                                        textTransform: 'uppercase'
+                                                    }}>Utama</span>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: '12px', color: '#444', marginTop: '4px', lineHeight: 1.4 }}>
+                                                {addr.address}
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: '#666', marginTop: '2px' }}>
+                                                Kel. {addr.village}, Kec. {addr.district}, {addr.city}, {addr.province}
+                                            </div>
+                                            <div style={{ fontSize: '10.5px', color: '#888', marginTop: '2px' }}>
+                                                Kode Pos: {addr.postal_code}
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                                            <button 
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); handleOpenEditAddrModal(addr); }}
+                                                style={{ background: 'none', border: 'none', color: '#3182ce', fontSize: '11px', fontWeight: 700, cursor: 'pointer' }}
+                                            >
+                                                Ubah
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Address Add/Edit Modal ── */}
+            {isAddrModalOpen && (
+                <div style={{
+                    position: 'fixed',
+                    inset: 0,
+                    zIndex: 10000,
+                    background: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '16px'
+                }}>
+                    <div style={{
+                        background: '#fff',
+                        width: '100%',
+                        maxWidth: '680px',
+                        borderRadius: '8px',
+                        boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column'
+                    }}>
+                        <div style={{
+                            background: '#c0001a',
+                            padding: '16px 20px',
+                            color: '#fff',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <span style={{ fontSize: '15px', fontWeight: 800 }}>
+                                {addrModalMode === 'create' ? 'Tambah Alamat Baru' : 'Ubah Alamat'}
+                            </span>
+                            <button 
+                                onClick={() => setIsAddrModalOpen(false)}
+                                style={{ background: 'none', border: 'none', color: '#fff', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <form onSubmit={handleAddressSubmit} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '70vh', overflowY: 'auto' }}>
+                            {addrError && (
+                                <div style={{ background: '#fef2f2', border: '1px solid #fee2e2', color: '#991b1b', padding: '10px 12px', borderRadius: '4px', fontSize: '12px', fontWeight: 600 }}>
+                                    {addrError}
+                                </div>
+                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Nama Penerima</label>
+                                    <input 
+                                        type="text" 
+                                        className="scp-input" 
+                                        value={addrName} 
+                                        onChange={(e) => setAddrName(e.target.value)} 
+                                        placeholder="Nama Lengkap" 
+                                        disabled={savingAddr} 
+                                        required 
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Nomor HP Penerima</label>
+                                    <input 
+                                        type="text" 
+                                        className="scp-input" 
+                                        value={addrPhone} 
+                                        onChange={(e) => setAddrPhone(e.target.value)} 
+                                        placeholder="Contoh: 08xxxxxxxxxx" 
+                                        disabled={savingAddr} 
+                                        required 
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Provinsi</label>
+                                    <select
+                                        className="scp-input"
+                                        value={addrProvince}
+                                        onChange={(e) => {
+                                            setAddrProvince(e.target.value);
+                                            setAddrCity('');
+                                            setAddrDistrict('');
+                                            setAddrVillage('');
+                                            setCities([]);
+                                            setDistricts([]);
+                                            setVillages([]);
+                                        }}
+                                        disabled={savingAddr || loadingRegions.provinces}
+                                        required
+                                    >
+                                        <option value="">Pilih Provinsi</option>
+                                        {provinces.map(p => (
+                                            <option key={p.id} value={p.name}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Kota / Kabupaten</label>
+                                    <select
+                                        className="scp-input"
+                                        value={addrCity}
+                                        onChange={(e) => {
+                                            setAddrCity(e.target.value);
+                                            setAddrDistrict('');
+                                            setAddrVillage('');
+                                            setDistricts([]);
+                                            setVillages([]);
+                                        }}
+                                        disabled={savingAddr || !addrProvince || loadingRegions.cities}
+                                        required
+                                    >
+                                        <option value="">Pilih Kota/Kabupaten</option>
+                                        {cities.map(c => (
+                                            <option key={c.id} value={c.name}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Kecamatan</label>
+                                    <select
+                                        className="scp-input"
+                                        value={addrDistrict}
+                                        onChange={(e) => {
+                                            setAddrDistrict(e.target.value);
+                                            setAddrVillage('');
+                                            setVillages([]);
+                                        }}
+                                        disabled={savingAddr || !addrCity || loadingRegions.districts}
+                                        required
+                                    >
+                                        <option value="">Pilih Kecamatan</option>
+                                        {districts.map(d => (
+                                            <option key={d.id} value={d.name}>{d.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Desa / Kelurahan</label>
+                                    <select
+                                        className="scp-input"
+                                        value={addrVillage}
+                                        onChange={(e) => setAddrVillage(e.target.value)}
+                                        disabled={savingAddr || !addrDistrict || loadingRegions.villages}
+                                        required
+                                    >
+                                        <option value="">Pilih Desa/Kelurahan</option>
+                                        {villages.map(v => (
+                                            <option key={v.id} value={v.name}>{v.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Detail Alamat (Jalan, Blok, No. Rumah, RT/RW)</label>
+                                <textarea 
+                                    className="scp-input" 
+                                    style={{ minHeight: '60px', resize: 'vertical' }}
+                                    value={addrDetail} 
+                                    onChange={(e) => setAddrDetail(e.target.value)} 
+                                    placeholder="Nama jalan, gedung, blok, nomor rumah, RT/RW, dsb."
+                                    disabled={savingAddr}
+                                    required
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Kode Pos</label>
+                                    <input 
+                                        type="text" 
+                                        className="scp-input" 
+                                        value={addrPostalCode} 
+                                        onChange={(e) => setAddrPostalCode(e.target.value)} 
+                                        placeholder="12345"
+                                        disabled={savingAddr}
+                                        required
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Latitude (Opsional)</label>
+                                    <input 
+                                        type="text" 
+                                        className="scp-input" 
+                                        value={addrLatitude} 
+                                        onChange={(e) => setAddrLatitude(e.target.value)} 
+                                        placeholder="-6.1234"
+                                        disabled={savingAddr}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <label style={{ fontSize: '11px', fontWeight: 700, color: '#555' }}>Longitude (Opsional)</label>
+                                    <input 
+                                        type="text" 
+                                        className="scp-input" 
+                                        value={addrLongitude} 
+                                        onChange={(e) => setAddrLongitude(e.target.value)} 
+                                        placeholder="106.1234"
+                                        disabled={savingAddr}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '4px 0' }}>
+                                <input 
+                                    type="checkbox" 
+                                    id="addrIsPrimaryCheckout" 
+                                    checked={addrIsPrimary} 
+                                    onChange={(e) => setAddrIsPrimary(e.target.checked)}
+                                    disabled={savingAddr || (addrModalMode === 'edit' && addrIsPrimary)}
+                                />
+                                <label htmlFor="addrIsPrimaryCheckout" style={{ fontSize: '12px', fontWeight: 600, color: '#4a5568', cursor: 'pointer' }}>
+                                    Jadikan alamat utama / default pengiriman
+                                </label>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', borderTop: '1px solid #edf2f7', paddingTop: '14px' }}>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsAddrModalOpen(false)}
+                                    style={{
+                                        background: '#edf2f7',
+                                        color: '#4a5568',
+                                        fontWeight: '700',
+                                        fontSize: '13px',
+                                        padding: '10px 20px',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
+                                    disabled={savingAddr}
+                                >
+                                    Batal
+                                </button>
+                                <button 
+                                    type="submit"
+                                    style={{
+                                        background: '#c0001a',
+                                        color: '#fff',
+                                        fontWeight: '700',
+                                        fontSize: '13px',
+                                        padding: '10px 20px',
+                                        border: 'none',
+                                        borderRadius: '4px',
+                                        cursor: 'pointer'
+                                    }}
+                                    disabled={savingAddr}
+                                >
+                                    {savingAddr ? 'Menyimpan...' : 'Simpan'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

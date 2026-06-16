@@ -11,6 +11,7 @@ import Footer from './Footer';
 import FlashSalePage from './FlashSalePage';
 import LoginPage from './LoginPage';
 import UserProfilePage from './UserProfilePage';
+import ChatWidget from './ChatWidget';
 
 // Data produk otomotif premium Putri Jaya Mobil
 const INITIAL_PRODUCTS = [
@@ -218,6 +219,9 @@ const INITIAL_PRODUCTS = [
 ];
 
 export default function App() {
+    const params = new URLSearchParams(window.location.search);
+    const initialPage = params.get('page') || 'home';
+
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [settings, setSettings] = useState({});
@@ -227,15 +231,70 @@ export default function App() {
     const [selectedCategory, setSelectedCategory] = useState('Semua');
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [isCartOpen, setIsCartOpen] = useState(false);
-    const [isCheckoutActive, setIsCheckoutActive] = useState(false);
+    const [isCheckoutActive, setIsCheckoutActive] = useState(initialPage === 'checkout');
     const [lastOrder, setLastOrder] = useState(null);
-    const [isFlashSalePageActive, setIsFlashSalePageActive] = useState(false);
+    const [isFlashSalePageActive, setIsFlashSalePageActive] = useState(initialPage === 'flash-sale');
     const [currentUser, setCurrentUser] = useState(null);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [authChecked, setAuthChecked] = useState(false);
-    const [isLoginPageActive, setIsLoginPageActive] = useState(false);
-    const [isUserProfileActive, setIsUserProfileActive] = useState(false);
+    const [isLoginPageActive, setIsLoginPageActive] = useState(initialPage === 'login');
+    const [isUserProfileActive, setIsUserProfileActive] = useState(initialPage === 'profile');
     const [loginReason, setLoginReason] = useState('');
+    const [notifications, setNotifications] = useState([]);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    const navigateTo = (pageName, extraParams = {}) => {
+        const queryParams = new URLSearchParams();
+        if (pageName && pageName !== 'home') {
+            queryParams.set('page', pageName);
+        }
+        Object.keys(extraParams).forEach(key => {
+            if (key !== 'product') {
+                queryParams.set(key, extraParams[key]);
+            }
+        });
+        
+        const newUrl = queryParams.toString() ? `?${queryParams.toString()}` : '/';
+        window.history.pushState({}, '', newUrl);
+
+        setIsUserProfileActive(pageName === 'profile');
+        setIsLoginPageActive(pageName === 'login');
+        setIsCheckoutActive(pageName === 'checkout');
+        setIsFlashSalePageActive(pageName === 'flash-sale');
+        
+        if (pageName === 'product') {
+            const productObj = extraParams.product || products.find(p => p.id === parseInt(extraParams.product_id));
+            if (productObj) {
+                setSelectedProduct(productObj);
+            }
+        } else {
+            setSelectedProduct(null);
+        }
+    };
+
+    // Listen to popstate event (browser Back/Forward buttons)
+    useEffect(() => {
+        const handlePopState = () => {
+            const p = new URLSearchParams(window.location.search);
+            const page = p.get('page') || 'home';
+            const prodId = p.get('product_id');
+
+            setIsUserProfileActive(page === 'profile');
+            setIsLoginPageActive(page === 'login');
+            setIsCheckoutActive(page === 'checkout');
+            setIsFlashSalePageActive(page === 'flash-sale');
+
+            if (page === 'product' && prodId && products.length > 0) {
+                const found = products.find(prod => prod.id === parseInt(prodId));
+                if (found) setSelectedProduct(found);
+            } else {
+                setSelectedProduct(null);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [products]);
 
     // Fetch data from database
     useEffect(() => {
@@ -253,6 +312,15 @@ export default function App() {
             if (meData && meData.id) setCurrentUser(meData);
             setAuthChecked(true);
             setLoading(false);
+
+            // Handle initial product selection on page load if page=product
+            const p = new URLSearchParams(window.location.search);
+            const page = p.get('page');
+            const prodId = p.get('product_id');
+            if (page === 'product' && prodId) {
+                const found = productsData.find(prod => prod.id === parseInt(prodId));
+                if (found) setSelectedProduct(found);
+            }
         })
         .catch(err => {
             console.error("Gagal mengambil data dari database:", err);
@@ -277,6 +345,82 @@ export default function App() {
     const saveCart = (newCart) => {
         setCart(newCart);
         localStorage.setItem('pjm_cart', JSON.stringify(newCart));
+    };
+
+    // ── Notification functions ──────────────────────────────────────────────
+    const fetchNotifications = async () => {
+        try {
+            const res = await fetch('/api/notifications');
+            if (res.ok) {
+                const data = await res.json();
+                setNotifications(data);
+                setUnreadCount(data.filter(n => !n.is_read).length);
+            }
+        } catch (e) { /* silently fail */ }
+    };
+
+    // Fetch notifications on auth check
+    useEffect(() => {
+        if (currentUser) {
+            fetchNotifications();
+        } else {
+            setNotifications([]);
+            setUnreadCount(0);
+        }
+    }, [currentUser]);
+
+    // Polling notifications setiap 30 detik
+    useEffect(() => {
+        if (!currentUser) return;
+        const interval = setInterval(fetchNotifications, 30000);
+        return () => clearInterval(interval);
+    }, [currentUser]);
+
+    const handleMarkNotificationRead = async (id) => {
+        try {
+            await fetch(`/api/notifications/${id}/read`, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' }
+            });
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch (e) { /* silently fail */ }
+    };
+
+    const handleMarkAllNotificationsRead = async () => {
+        try {
+            await fetch('/api/notifications/read-all', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' }
+            });
+            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+            setUnreadCount(0);
+        } catch (e) { /* silently fail */ }
+    };
+
+    const handleDeleteNotification = async (id) => {
+        try {
+            await fetch(`/api/notifications/${id}`, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' }
+            });
+            setNotifications(prev => {
+                const removed = prev.find(n => n.id === id);
+                if (removed && !removed.is_read) setUnreadCount(c => Math.max(0, c - 1));
+                return prev.filter(n => n.id !== id);
+            });
+        } catch (e) { /* silently fail */ }
+    };
+
+    const handleNotificationClick = (notification) => {
+        if (!notification.is_read) handleMarkNotificationRead(notification.id);
+        if (notification.link) {
+            const params = new URLSearchParams(notification.link.replace('?', ''));
+            const page = params.get('page') || 'home';
+            const extras = {};
+            params.forEach((v, k) => { if (k !== 'page') extras[k] = v; });
+            navigateTo(page, extras);
+        }
     };
 
     const handleAddToCart = (product, quantity = 1, variant = '') => {
@@ -322,13 +466,12 @@ export default function App() {
     const handleCheckout = () => {
         if (!currentUser) {
             setLoginReason('checkout');
-            setIsLoginPageActive(true);
+            navigateTo('login');
             setIsCartOpen(false);
             return;
         }
-        setIsCheckoutActive(true);
+        navigateTo('checkout');
         setIsCartOpen(false);
-        setSelectedProduct(null); // Tutup detail produk jika sedang terbuka
     };
 
     const handleLogout = async () => {
@@ -336,20 +479,19 @@ export default function App() {
             await fetch('/api/auth/logout', { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' } });
         } catch (e) { /* silently fail */ }
         setCurrentUser(null);
+        navigateTo('home');
     };
 
     const handleGoToLoginPage = (reason = '') => {
         setLoginReason(reason);
-        setIsLoginPageActive(true);
+        navigateTo('login');
         setIsCartOpen(false);
-        setSelectedProduct(null);
-        setIsCheckoutActive(false);
-        setIsFlashSalePageActive(false);
     };
 
     const handleOrderSuccess = (orderData) => {
         setLastOrder(orderData);
         setIsCheckoutActive(false);
+        window.history.pushState({}, '', '/');
         saveCart([]); // Kosongkan keranjang belanja
     };
 
@@ -363,29 +505,25 @@ export default function App() {
                 setSearchQuery={(q) => {
                     setSearchQuery(q);
                     if (q) {
-                        setIsFlashSalePageActive(false);
-                        setSelectedProduct(null);
+                        navigateTo('home');
                     }
                 }}
                 onOpenCart={() => setIsCartOpen(true)}
                 onLogoClick={() => {
-                    setIsFlashSalePageActive(false);
-                    setSelectedProduct(null);
-                    setIsCheckoutActive(false);
-                    setIsLoginPageActive(false);
-                    setIsUserProfileActive(false);
+                    navigateTo('home');
                     setLastOrder(null);
                 }}
                 onLogout={handleLogout}
                 onLoginClick={() => handleGoToLoginPage()}
                 onProfileClick={() => {
-                    setIsUserProfileActive(true);
-                    setIsLoginPageActive(false);
-                    setSelectedProduct(null);
-                    setIsCheckoutActive(false);
-                    setIsFlashSalePageActive(false);
+                    navigateTo('profile');
                     setLastOrder(null);
                 }}
+                notifications={notifications}
+                unreadCount={unreadCount}
+                onNotificationClick={handleNotificationClick}
+                onMarkAllRead={handleMarkAllNotificationsRead}
+                onDeleteNotification={handleDeleteNotification}
             />
 
             <main className="grow pb-12">
@@ -399,16 +537,18 @@ export default function App() {
                         <UserProfilePage
                             currentUser={currentUser}
                             onUpdateUser={(user) => setCurrentUser(user)}
-                            onBack={() => setIsUserProfileActive(false)}
+                            onBack={() => navigateTo('home')}
                             settings={settings}
+                            initialTab={new URLSearchParams(window.location.search).get('tab') || 'profile'}
+                            onTabChange={(tabName) => navigateTo('profile', { tab: tabName })}
                         />
                     ) : isLoginPageActive ? (
                         <LoginPage
                             reason={loginReason}
-                            onBack={() => setIsLoginPageActive(false)}
+                            onBack={() => navigateTo('home')}
                             onLoginSuccess={(user) => {
                                 setCurrentUser(user);
-                                setIsLoginPageActive(false);
+                                navigateTo(loginReason === 'checkout' ? 'checkout' : 'home');
                             }}
                         />
                     ) : lastOrder ? (
@@ -454,7 +594,7 @@ export default function App() {
 
                             <div className="flex flex-col sm:flex-row gap-3">
                                 <button
-                                    onClick={() => setLastOrder(null)}
+                                    onClick={() => { setLastOrder(null); navigateTo('home'); }}
                                     className="flex-1 bg-linear-to-r from-red-650 via-red-600 to-red-950 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md hover:shadow-red-500/20 transition cursor-pointer text-xs uppercase tracking-wider"
                                 >
                                     Belanja Lagi
@@ -474,7 +614,7 @@ export default function App() {
                     ) : isCheckoutActive ? (
                         <CheckoutPage 
                             cart={cart}
-                            onBack={() => setIsCheckoutActive(false)}
+                            onBack={() => navigateTo('home')}
                             onOrderSuccess={handleOrderSuccess}
                             currentUser={currentUser}
                             settings={settings}
@@ -482,7 +622,7 @@ export default function App() {
                     ) : selectedProduct ? (
                         <ProductDetailPage 
                             product={selectedProduct} 
-                            onBack={() => setSelectedProduct(null)} 
+                            onBack={() => navigateTo('home')} 
                             onAddToCart={handleAddToCart}
                             settings={settings}
                         />
@@ -490,8 +630,8 @@ export default function App() {
                         <FlashSalePage 
                             products={products}
                             settings={settings}
-                            onBack={() => setIsFlashSalePageActive(false)}
-                            onProductClick={setSelectedProduct}
+                            onBack={() => navigateTo('home')}
+                            onProductClick={(prod) => navigateTo('product', { product_id: prod.id, product: prod })}
                             onAddToCart={handleAddToCart}
                         />
                     ) : (
@@ -505,8 +645,7 @@ export default function App() {
                                 selectedCategory={selectedCategory}
                                 setSelectedCategory={(cat) => {
                                     setSelectedCategory(cat);
-                                    setIsFlashSalePageActive(false);
-                                    setSelectedProduct(null);
+                                    navigateTo('home');
                                 }}
                             />
 
@@ -514,8 +653,8 @@ export default function App() {
                             <FlashSale 
                                 products={products} 
                                 settings={settings} 
-                                onProductClick={setSelectedProduct} 
-                                onSeeAll={() => setIsFlashSalePageActive(true)}
+                                onProductClick={(prod) => navigateTo('product', { product_id: prod.id, product: prod })}
+                                onSeeAll={() => navigateTo('flash-sale')}
                             />
 
                             {/* Products Section with filter & search */}
@@ -523,7 +662,7 @@ export default function App() {
                                 products={products}
                                 searchQuery={searchQuery}
                                 selectedCategory={selectedCategory}
-                                onProductClick={setSelectedProduct}
+                                onProductClick={(prod) => navigateTo('product', { product_id: prod.id, product: prod })}
                                 onAddToCart={handleAddToCart}
                             />
                         </>
@@ -543,6 +682,12 @@ export default function App() {
                 onRemoveItem={handleRemoveFromCart}
                 onCheckout={handleCheckout}
                 settings={settings}
+            />
+
+            {/* Live Chat with Customer Service */}
+            <ChatWidget 
+                currentUser={currentUser} 
+                onOpenLogin={handleGoToLoginPage} 
             />
         </div>
     );

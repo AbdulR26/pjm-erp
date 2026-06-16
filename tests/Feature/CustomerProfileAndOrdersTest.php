@@ -20,6 +20,9 @@ class CustomerProfileAndOrdersTest extends TestCase
             'email' => 'johndoe@example.com',
             'phone' => '081234567890',
             'address' => 'Old Address',
+            'postal_code' => '11111',
+            'latitude' => -6.0000,
+            'longitude' => 106.0000,
         ]);
 
         // Put customer in session to simulate authentication
@@ -29,11 +32,17 @@ class CustomerProfileAndOrdersTest extends TestCase
                 'name' => $customer->name,
                 'email' => $customer->email,
                 'provider' => 'email',
+                'postal_code' => $customer->postal_code,
+                'latitude' => $customer->latitude,
+                'longitude' => $customer->longitude,
             ]
         ])->putJson('/api/auth/profile', [
             'name' => 'John New Name',
             'phone' => '089876543210',
             'address' => 'New Address Detail',
+            'postal_code' => '12345',
+            'latitude' => -6.1234,
+            'longitude' => 106.1234,
         ]);
 
         $response->assertStatus(200)
@@ -44,6 +53,9 @@ class CustomerProfileAndOrdersTest extends TestCase
                     'name' => 'John New Name',
                     'phone' => '089876543210',
                     'address' => 'New Address Detail',
+                    'postal_code' => '12345',
+                    'latitude' => -6.1234,
+                    'longitude' => 106.1234,
                 ]
             ]);
 
@@ -52,11 +64,17 @@ class CustomerProfileAndOrdersTest extends TestCase
             'name' => 'John New Name',
             'phone' => '089876543210',
             'address' => 'New Address Detail',
+            'postal_code' => '12345',
+            'latitude' => -6.1234,
+            'longitude' => 106.1234,
         ]);
         
         // Assert session updated
         $this->assertEquals('John New Name', session('customer.name'));
         $this->assertEquals('New Address Detail', session('customer.address'));
+        $this->assertEquals('12345', session('customer.postal_code'));
+        $this->assertEquals(-6.1234, session('customer.latitude'));
+        $this->assertEquals(106.1234, session('customer.longitude'));
     }
 
     public function test_unauthenticated_customer_cannot_update_profile()

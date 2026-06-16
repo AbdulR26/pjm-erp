@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
-    ShoppingCart, Search, RefreshCw, Plus, X, ChevronDown, ChevronRight,
+    ShoppingCart, Search, RefreshCw, Plus, X, ChevronDown, ChevronRight, ChevronLeft,
     CreditCard, Truck, Package, CheckCircle, XCircle, Clock, AlertCircle,
     Eye, Send, Ban, RotateCcw, Loader2, MapPin, Phone, User, FileText,
     ArrowRight, ExternalLink, Copy, Check, Zap, Printer
@@ -374,8 +374,9 @@ function PaymentTab({ order }) {
 }
 
 // ─── Shipment Tab ─────────────────────────────────────────────────────────────
-function ShipmentTab({ order }) {
+function ShipmentTab({ order, onRefresh }) {
     const [shipment, setShipment] = useState(order.shipment);
+    const [isEditing, setIsEditing] = useState(false);
     const [rates, setRates] = useState([]);
     const [loadingRates, setLoadingRates] = useState(false);
     const [loadingCreate, setLoadingCreate] = useState(false);
@@ -384,6 +385,10 @@ function ShipmentTab({ order }) {
     const [msg, setMsg] = useState(null);
     const [selectedRate, setSelectedRate] = useState(null);
     const [step, setStep] = useState('address'); // address | rates | confirm
+
+    useEffect(() => {
+        setShipment(order.shipment);
+    }, [order.shipment]);
 
     const customer = order.customer;
     const [form, setForm] = useState({
@@ -428,8 +433,34 @@ function ShipmentTab({ order }) {
             });
             setShipment(res.data.shipment);
             setMsg({ type: 'success', text: 'Pengiriman berhasil dibooking! Kurir akan melakukan pickup.' });
+            if (onRefresh) onRefresh();
         } catch (e) {
             setMsg({ type: 'error', text: e.response?.data?.message || 'Gagal membuat pengiriman.' });
+        } finally { setLoadingCreate(false); }
+    };
+
+    const handleBookExistingShipment = async () => {
+        if (!shipment) return;
+        setLoadingCreate(true); setMsg(null);
+        try {
+            const res = await axios.post(`/adminv1/api/orders/${order.id}/shipment`, {
+                courier_company: shipment.courier_company,
+                courier_service: shipment.courier_service,
+                courier_service_name: shipment.courier_service_name,
+                etd: shipment.etd,
+                cost: shipment.cost,
+                destination_contact_name: shipment.destination_contact_name,
+                destination_contact_phone: shipment.destination_contact_phone,
+                destination_address: shipment.destination_address,
+                destination_postal_code: shipment.destination_postal_code,
+                destination_latitude: shipment.destination_latitude || undefined,
+                destination_longitude: shipment.destination_longitude || undefined,
+            });
+            setShipment(res.data.shipment);
+            setMsg({ type: 'success', text: 'Pengiriman berhasil dibooking! Kurir akan melakukan pickup.' });
+            if (onRefresh) onRefresh();
+        } catch (e) {
+            setMsg({ type: 'error', text: e.response?.data?.message || 'Gagal membooking pengiriman.' });
         } finally { setLoadingCreate(false); }
     };
 
@@ -439,6 +470,7 @@ function ShipmentTab({ order }) {
             const res = await axios.get(`/adminv1/api/orders/${order.id}/shipment?sync=1`);
             setShipment(res.data);
             setMsg({ type: 'success', text: 'Status tracking berhasil disinkronkan.' });
+            if (onRefresh) onRefresh();
         } catch { }
         setSyncLoading(false);
     };
@@ -451,12 +483,13 @@ function ShipmentTab({ order }) {
             const res = await axios.post(`/adminv1/api/orders/${order.id}/shipment/cancel`, { reason });
             setShipment(res.data.shipment);
             setMsg({ type: 'success', text: 'Pengiriman berhasil dibatalkan.' });
+            if (onRefresh) onRefresh();
         } catch (e) {
             setMsg({ type: 'error', text: e.response?.data?.message || 'Gagal membatalkan pengiriman.' });
         } finally { setCancelLoading(false); }
     };
 
-    if (shipment && shipment.status !== 'cancelled') {
+    if (shipment && shipment.status !== 'cancelled' && shipment.status !== 'draft') {
         const sStatus = SHIPMENT_STATUS_CONFIG[shipment.status] || SHIPMENT_STATUS_CONFIG['draft'];
         return (
             <div className="space-y-4">
@@ -524,7 +557,9 @@ function ShipmentTab({ order }) {
         );
     }
 
-    // No active shipment — show creation form
+    const showCheckoutSummary = shipment && shipment.status === 'draft' && !isEditing;
+
+    // No active shipment — show creation form or checkout summary
     return (
         <div className="space-y-4">
             {msg && <div className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 ${msg.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{msg.type === 'success' ? <CheckCircle size={15} /> : <AlertCircle size={15} />}{msg.text}</div>}
@@ -536,89 +571,169 @@ function ShipmentTab({ order }) {
                 </div>
             )}
 
-            {step === 'address' && (
-                <form onSubmit={handleGetRates} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+            {showCheckoutSummary ? (
+                <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4 animate-in fade-in duration-200">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center"><MapPin size={20} className="text-violet-600" /></div>
+                        <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center"><Truck size={20} className="text-violet-600" /></div>
                         <div>
-                            <p className="text-sm font-black text-slate-800">Alamat Pengiriman</p>
-                            <p className="text-xs text-slate-500">Isi alamat tujuan dan cek ongkir</p>
+                            <p className="text-sm font-black text-slate-800">Detail Pengiriman dari Checkout</p>
+                            <p className="text-xs text-slate-500">Customer telah memilih kurir & mengisi alamat saat checkout</p>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-1">Nama Penerima *</label>
-                            <input value={form.destination_contact_name} onChange={e => setForm(f => ({...f, destination_contact_name: e.target.value}))} required className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-1">No. HP Penerima *</label>
-                            <input value={form.destination_contact_phone} onChange={e => setForm(f => ({...f, destination_contact_phone: e.target.value}))} required className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-slate-600 mb-1">Alamat Lengkap *</label>
-                        <textarea value={form.destination_address} onChange={e => setForm(f => ({...f, destination_address: e.target.value}))} required rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-none" />
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                        <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-1">Kode Pos *</label>
-                            <input value={form.destination_postal_code} onChange={e => setForm(f => ({...f, destination_postal_code: e.target.value}))} required placeholder="12345" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-1">Latitude</label>
-                            <input value={form.destination_latitude} onChange={e => setForm(f => ({...f, destination_latitude: e.target.value}))} placeholder="-6.1234" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-600 mb-1">Longitude</label>
-                            <input value={form.destination_longitude} onChange={e => setForm(f => ({...f, destination_longitude: e.target.value}))} placeholder="106.1234" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
-                        </div>
-                    </div>
-                    <button type="submit" disabled={loadingRates} className="w-full flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition">
-                        {loadingRates ? <LoadingSpinner size={4} /> : <Truck size={16} />} Cek Ongkos Kirim
-                    </button>
-                </form>
-            )}
 
-            {step === 'rates' && (
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm font-bold text-slate-700">{rates.length} Layanan Pengiriman Tersedia</p>
-                        <button onClick={() => { setStep('address'); setSelectedRate(null); }} className="text-xs text-violet-600 hover:underline font-semibold">← Ubah Alamat</button>
+                    <div className="bg-violet-50/50 border border-violet-100 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center justify-between border-b border-violet-100/50 pb-2">
+                            <div>
+                                <p className="text-sm font-black text-violet-900">{shipment.courier_service_name || `${shipment.courier_company.toUpperCase()} ${shipment.courier_service.toUpperCase()}`}</p>
+                                <p className="text-xs text-violet-600">Estimasi Pengiriman: {shipment.etd || '-'} Hari</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-slate-500 font-bold">Ongkos Kirim</p>
+                                <p className="text-base font-black text-violet-700">{fmt(shipment.cost)}</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 text-xs text-slate-700">
+                            <div>
+                                <span className="font-bold text-slate-400 block uppercase tracking-wide text-[10px]">Penerima</span>
+                                <span className="font-bold text-slate-800 text-sm">{shipment.destination_contact_name}</span>
+                            </div>
+                            <div>
+                                <span className="font-bold text-slate-400 block uppercase tracking-wide text-[10px]">No. Telepon</span>
+                                <span className="text-slate-800 font-semibold">{shipment.destination_contact_phone}</span>
+                            </div>
+                            <div>
+                                <span className="font-bold text-slate-400 block uppercase tracking-wide text-[10px]">Alamat Lengkap</span>
+                                <span className="text-slate-800 leading-relaxed block">{shipment.destination_address}</span>
+                                {shipment.destination_postal_code && (
+                                    <span className="inline-block bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px] font-bold mt-1">Kode Pos: {shipment.destination_postal_code}</span>
+                                )}
+                            </div>
+                        </div>
                     </div>
-                    <div className="space-y-2 max-h-72 overflow-y-auto">
-                        {rates.map((rate, i) => (
-                            <button key={i} type="button" onClick={() => setSelectedRate(rate)}
-                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition text-left ${selectedRate === rate ? 'border-violet-500 bg-violet-50' : 'border-slate-200 bg-white hover:border-violet-300'}`}>
+
+                    <div className="flex gap-2 pt-2">
+                        <button onClick={handleBookExistingShipment} disabled={loadingCreate || !canCreateShipment} className="flex-1 flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-750 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition shadow-md shadow-violet-500/10">
+                            {loadingCreate ? <LoadingSpinner size={4} /> : <Send size={16} />} Terbitkan Resi / Booking Kurir
+                        </button>
+                        <button onClick={() => {
+                            setForm({
+                                destination_contact_name: shipment.destination_contact_name || '',
+                                destination_contact_phone: shipment.destination_contact_phone || '',
+                                destination_address: shipment.destination_address || '',
+                                destination_postal_code: shipment.destination_postal_code || '',
+                                destination_latitude: shipment.destination_latitude || '',
+                                destination_longitude: shipment.destination_longitude || '',
+                                couriers: 'jne,jnt,sicepat,anteraja,ide',
+                            });
+                            setIsEditing(true);
+                            setStep('address');
+                        }} className="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition border border-slate-200">
+                            Ubah Alamat / Kurir
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {step === 'address' && (
+                        <form onSubmit={handleGetRates} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-violet-50 rounded-xl flex items-center justify-center"><MapPin size={20} className="text-violet-600" /></div>
+                                    <div>
+                                        <p className="text-sm font-black text-slate-800">Alamat Pengiriman Manual</p>
+                                        <p className="text-xs text-slate-500">Isi alamat tujuan baru dan cek ongkir</p>
+                                    </div>
+                                </div>
+                                {shipment && shipment.status === 'draft' && (
+                                    <button type="button" onClick={() => setIsEditing(false)} className="text-xs text-violet-600 hover:underline font-semibold">
+                                        ← Kembali ke Checkout
+                                    </button>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <p className="text-sm font-black text-slate-800">{rate.courier_name} <span className="font-semibold text-slate-600">{rate.courier_service_name}</span></p>
-                                    <p className="text-xs text-slate-500">Est. {rate.duration || '?'} hari · {rate.courier_code?.toUpperCase()}</p>
+                                    <label className="block text-xs font-bold text-slate-600 mb-1">Nama Penerima *</label>
+                                    <input value={form.destination_contact_name} onChange={e => setForm(f => ({...f, destination_contact_name: e.target.value}))} required className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-base font-black text-violet-700">{fmt(rate.price)}</p>
-                                    {selectedRate === rate && <p className="text-xs text-violet-500 font-bold">✓ Dipilih</p>}
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 mb-1">No. HP Penerima *</label>
+                                    <input value={form.destination_contact_phone} onChange={e => setForm(f => ({...f, destination_contact_phone: e.target.value}))} required className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-600 mb-1">Alamat Lengkap *</label>
+                                <textarea value={form.destination_address} onChange={e => setForm(f => ({...f, destination_address: e.target.value}))} required rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100 resize-none" />
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 mb-1">Kode Pos *</label>
+                                    <input value={form.destination_postal_code} onChange={e => setForm(f => ({...f, destination_postal_code: e.target.value}))} required placeholder="12345" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 mb-1">Latitude</label>
+                                    <input value={form.destination_latitude} onChange={e => setForm(f => ({...f, destination_latitude: e.target.value}))} placeholder="-6.1234" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-600 mb-1">Longitude</label>
+                                    <input value={form.destination_longitude} onChange={e => setForm(f => ({...f, destination_longitude: e.target.value}))} placeholder="106.1234" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button type="submit" disabled={loadingRates} className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-violet-600 hover:bg-violet-700 disabled:opacity-60 text-white rounded-xl font-bold text-sm transition">
+                                    {loadingRates ? <LoadingSpinner size={4} /> : <Truck size={16} />} Cek Ongkos Kirim
+                                </button>
+                                {shipment && shipment.status === 'draft' && (
+                                    <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm transition border border-slate-200">
+                                        Batal
+                                    </button>
+                                )}
+                            </div>
+                        </form>
+                    )}
+
+                    {step === 'rates' && (
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm font-bold text-slate-700">{rates.length} Layanan Pengiriman Tersedia</p>
+                                <button onClick={() => { setStep('address'); setSelectedRate(null); }} className="text-xs text-violet-600 hover:underline font-semibold">← Ubah Alamat</button>
+                            </div>
+                            <div className="space-y-2 max-h-72 overflow-y-auto">
+                                {rates.map((rate, i) => (
+                                    <button key={i} type="button" onClick={() => setSelectedRate(rate)}
+                                        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 transition text-left ${selectedRate === rate ? 'border-violet-500 bg-violet-50' : 'border-slate-200 bg-white hover:border-violet-300'}`}>
+                                        <div>
+                                            <p className="text-sm font-black text-slate-800">{rate.courier_name} <span className="font-semibold text-slate-600">{rate.courier_service_name}</span></p>
+                                            <p className="text-xs text-slate-500">Est. {rate.duration || '?'} hari · {rate.courier_code?.toUpperCase()}</p>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-base font-black text-violet-700">{fmt(rate.price)}</p>
+                                            {selectedRate === rate && <p className="text-xs text-violet-500 font-bold">✓ Dipilih</p>}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                            {selectedRate && (
+                                <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
+                                    <p className="text-sm font-bold text-violet-800 mb-1">Ringkasan Pengiriman:</p>
+                                    <p className="text-sm text-violet-700">{selectedRate.courier_name} - {selectedRate.courier_service_name}</p>
+                                    <p className="text-sm text-violet-700">Ongkir: <strong>{fmt(selectedRate.price)}</strong> · ETD: <strong>{selectedRate.duration} hari</strong></p>
+                                </div>
+                            )}
+                            <button onClick={handleCreateShipment} disabled={!selectedRate || loadingCreate || !canCreateShipment} className="w-full flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition">
+                                {loadingCreate ? <LoadingSpinner size={4} /> : <Send size={16} />} Booking Kurir via Biteship
                             </button>
-                        ))}
-                    </div>
-                    {selectedRate && (
-                        <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
-                            <p className="text-sm font-bold text-violet-800 mb-1">Ringkasan Pengiriman:</p>
-                            <p className="text-sm text-violet-700">{selectedRate.courier_name} - {selectedRate.courier_service_name}</p>
-                            <p className="text-sm text-violet-700">Ongkir: <strong>{fmt(selectedRate.price)}</strong> · ETD: <strong>{selectedRate.duration} hari</strong></p>
                         </div>
                     )}
-                    <button onClick={handleCreateShipment} disabled={!selectedRate || loadingCreate || !canCreateShipment} className="w-full flex items-center justify-center gap-2 py-3 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition">
-                        {loadingCreate ? <LoadingSpinner size={4} /> : <Send size={16} />} Booking Kurir via Biteship
-                    </button>
-                </div>
+                </>
             )}
         </div>
     );
 }
 
 // ─── Order Detail Panel ───────────────────────────────────────────────────────
-function OrderDetailPanel({ order, onClose, onRefresh }) {
-    const [activeTab, setActiveTab] = useState('detail');
+function OrderDetailPanel({ order, onClose, onRefresh, initialTab = 'detail' }) {
+    const [activeTab, setActiveTab] = useState(initialTab);
     const [fullOrder, setFullOrder] = useState(order);
     const [loading, setLoading] = useState(false);
 
@@ -680,7 +795,7 @@ function OrderDetailPanel({ order, onClose, onRefresh }) {
                         <>
                             {activeTab === 'detail' && <DetailTab order={fullOrder} />}
                             {activeTab === 'payment' && <PaymentTab order={fullOrder} />}
-                            {activeTab === 'shipment' && <ShipmentTab order={fullOrder} />}
+                            {activeTab === 'shipment' && <ShipmentTab order={fullOrder} onRefresh={loadOrder} />}
                         </>
                     )}
                 </div>
@@ -778,22 +893,65 @@ export default function OrderManagement() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
+    const [perPage, setPerPage] = useState(15);
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [selectedOrderTab, setSelectedOrderTab] = useState('detail');
     const [showCreateModal, setShowCreateModal] = useState(false);
+
+    // Bulk selection states
+    const [selectedIds, setSelectedIds] = useState([]);
+    const [bulkLoading, setBulkLoading] = useState(false);
+    const [bulkResults, setBulkResults] = useState(null);
+
+    useEffect(() => {
+        setSelectedIds([]);
+    }, [page, statusFilter, search, perPage]);
+
+    const handleBulkGenerateResi = async () => {
+        if (selectedIds.length === 0) return;
+        if (!confirm(`Apakah Anda yakin ingin melakukan generate resi masal untuk ${selectedIds.length} order?`)) return;
+        setBulkLoading(true);
+        try {
+            const res = await axios.post('/adminv1/api/shipments/bulk-store', {
+                order_ids: selectedIds
+            });
+            setBulkResults(res.data.results);
+            fetchOrders();
+        } catch (e) {
+            alert(e.response?.data?.message || 'Gagal melakukan generate resi masal.');
+        } finally {
+            setBulkLoading(false);
+        }
+    };
+
+    const [bulkAction, setBulkAction] = useState('');
+
+    const handleProcessBulkAction = () => {
+        if (selectedIds.length === 0) return;
+        if (bulkAction === 'print_invoice') {
+            const url = `/adminv1/api/orders/print-invoices?order_ids=${selectedIds.join(',')}`;
+            window.open(url, '_blank');
+        } else if (bulkAction === 'print_resi') {
+            const url = `/adminv1/api/orders/print-resis?order_ids=${selectedIds.join(',')}`;
+            window.open(url, '_blank');
+        } else if (bulkAction === 'generate_resi') {
+            handleBulkGenerateResi();
+        }
+    };
 
     const fetchOrders = useCallback(async () => {
         setLoading(true);
         try {
             const res = await axios.get('/adminv1/api/orders', {
-                params: { status: statusFilter, search: search || undefined, page, per_page: 15 }
+                params: { status: statusFilter, search: search || undefined, page, per_page: perPage }
             });
             setOrders(res.data.data || []);
             setPagination(res.data);
         } catch { }
         setLoading(false);
-    }, [statusFilter, search, page]);
+    }, [statusFilter, search, page, perPage]);
 
-    useEffect(() => { setPage(1); }, [statusFilter, search]);
+    useEffect(() => { setPage(1); }, [statusFilter, search, perPage]);
     useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
     const handleCreated = () => { setShowCreateModal(false); fetchOrders(); };
@@ -821,18 +979,76 @@ export default function OrderManagement() {
                 ))}
             </div>
 
-            {/* Search + Refresh */}
-            <div className="flex gap-2">
-                <div className="flex-1 relative">
-                    <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari no. order atau nama customer..." className="w-full pl-9 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-red-400 focus:ring-2 focus:ring-red-100" />
-                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            {/* Control Panel: Search & Bulk Actions */}
+            <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                    {/* Page entry select */}
+                    <div className="flex items-center space-x-2 text-xs font-bold text-slate-500 shrink-0">
+                        <span>Tampilkan</span>
+                        <select
+                            value={perPage}
+                            onChange={(e) => {
+                                setPerPage(Number(e.target.value));
+                                setPage(1);
+                            }}
+                            className="border border-slate-200 rounded-xl px-2.5 py-1.5 focus:outline-none text-slate-700 font-bold bg-white cursor-pointer"
+                        >
+                            <option value={10}>10</option>
+                            <option value={15}>15</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                        </select>
+                        <span>data</span>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div className="relative flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 w-full sm:w-64">
+                        <Search className="text-slate-400 mr-2 shrink-0" size={16} />
+                        <input
+                            type="text"
+                            placeholder="Cari order number, nama customer..."
+                            className="bg-transparent focus:outline-none text-xs w-full text-slate-700 font-semibold"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                        {search && (
+                            <button onClick={() => setSearch('')} className="p-0.5 text-slate-400 hover:text-red-500 transition rounded-lg">
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
                 </div>
-                <button onClick={fetchOrders} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition">
-                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                </button>
+
+                {/* Bulk Actions Dropdown & Process Button */}
+                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                    {selectedIds.length > 0 && (
+                        <span className="inline-flex items-center justify-center bg-red-650 text-white font-black text-xs px-2.5 py-1 rounded-lg">
+                            {selectedIds.length} Terpilih
+                        </span>
+                    )}
+                    <select
+                        value={bulkAction}
+                        onChange={(e) => setBulkAction(e.target.value)}
+                        className="border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-red-400 bg-white font-bold text-slate-700 cursor-pointer disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed"
+                        disabled={selectedIds.length === 0}
+                    >
+                        <option value="">-- Pilih Tindakan Masal --</option>
+                        <option value="print_invoice">Cetak Invoice</option>
+                        <option value="print_resi">Cetak Resi</option>
+                        <option value="generate_resi">Generate Resi Masal</option>
+                    </select>
+                    <button
+                        onClick={handleProcessBulkAction}
+                        disabled={!bulkAction || selectedIds.length === 0 || bulkLoading}
+                        className="flex items-center justify-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-900 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                        {bulkLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white mr-1" /> : null}
+                        Proses
+                    </button>
+                </div>
             </div>
 
-            {/* Orders List */}
+            {/* Orders Table */}
             {loading ? (
                 <div className="flex items-center justify-center py-20"><LoadingSpinner size={8} /></div>
             ) : orders.length === 0 ? (
@@ -842,63 +1058,200 @@ export default function OrderManagement() {
                     <p className="text-slate-400 text-sm mt-1">Coba ubah filter atau buat order baru</p>
                 </div>
             ) : (
-                <div className="space-y-3">
-                    {orders.map(order => {
-                        const oCfg = ORDER_STATUS_CONFIG[order.status] || ORDER_STATUS_CONFIG['pending'];
-                        const pStatus = PAYMENT_STATUS_CONFIG[order.payment?.status];
-                        const sStatus = SHIPMENT_STATUS_CONFIG[order.shipment?.status];
-                        return (
-                            <div key={order.id} onClick={() => setSelectedOrder(order)} className={`bg-white border-2 ${oCfg.border} rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all duration-200 hover:-translate-y-0.5`}>
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-mono text-sm font-black text-slate-800">{order.order_number}</span>
-                                            <span className={`px-2 py-0.5 rounded-full text-xs font-black ${oCfg.badge}`}>{oCfg.label}</span>
-                                        </div>
-                                        <p className="text-sm text-slate-600 flex items-center gap-1.5"><User size={12} className="text-slate-400 shrink-0" />{order.customer?.name} <span className="text-slate-400">·</span> <span className="capitalize text-xs bg-slate-100 px-2 py-0.5 rounded-lg font-semibold text-slate-600">{order.customer_level}</span></p>
-                                        <p className="text-xs text-slate-400 mt-0.5">{formatDate(order.created_at)} · {order.items?.length || 0} item</p>
-                                    </div>
-                                    <div className="text-right shrink-0">
-                                        <p className="text-base font-black text-slate-800">{fmt(order.grand_total)}</p>
-                                        <ArrowRight size={14} className="text-slate-300 ml-auto mt-1" />
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
-                                    {pStatus ? (
-                                        <span className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${pStatus.bg} ${pStatus.text}`}>
-                                            <CreditCard size={11} />{pStatus.label}
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-500"><CreditCard size={11} />Belum ada payment</span>
-                                    )}
-                                    {sStatus ? (
-                                        <span className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold ${sStatus.bg} ${sStatus.text}`}>
-                                            <Truck size={11} />{sStatus.label}
-                                        </span>
-                                    ) : (
-                                        <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-500"><Truck size={11} />Belum dikirim</span>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
+                <div className="bg-white rounded-2xl border border-slate-200/60 shadow-xs overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs md:text-sm">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[10px] select-none">
+                                    <th className="py-4 px-4 w-10 text-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={orders.length > 0 && selectedIds.length === orders.length}
+                                            onChange={() => {
+                                                if (selectedIds.length === orders.length) {
+                                                    setSelectedIds([]);
+                                                } else {
+                                                    setSelectedIds(orders.map(o => o.id));
+                                                }
+                                            }}
+                                            className="w-4.5 h-4.5 text-red-600 border-slate-300 rounded focus:ring-red-500 cursor-pointer"
+                                        />
+                                    </th>
+                                    <th className="py-4 px-4">No. Order</th>
+                                    <th className="py-4 px-4">Customer</th>
+                                    <th className="py-4 px-4">Tanggal</th>
+                                    <th className="py-4 px-4 text-right">Total</th>
+                                    <th className="py-4 px-4 text-center">Payment</th>
+                                    <th className="py-4 px-4 text-center">Pengiriman</th>
+                                    <th className="py-4 px-4 text-center">Status</th>
+                                    <th className="py-4 px-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                                {orders.map(order => {
+                                    const oCfg = ORDER_STATUS_CONFIG[order.status] || ORDER_STATUS_CONFIG['pending'];
+                                    const pStatus = PAYMENT_STATUS_CONFIG[order.payment?.status];
+                                    const sStatus = SHIPMENT_STATUS_CONFIG[order.shipment?.status];
+                                    return (
+                                        <tr key={order.id} className="hover:bg-slate-50/50 transition duration-150">
+                                            <td className="py-4 px-4 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.includes(order.id)}
+                                                    onChange={() => {
+                                                        setSelectedIds(prev =>
+                                                            prev.includes(order.id)
+                                                                ? prev.filter(id => id !== order.id)
+                                                                : [...prev, order.id]
+                                                        );
+                                                    }}
+                                                    className="w-4.5 h-4.5 text-red-650 border-slate-300 rounded focus:ring-red-500 cursor-pointer"
+                                                />
+                                            </td>
+                                            <td className="py-4 px-4 font-mono font-bold text-slate-800">{order.order_number}</td>
+                                            <td className="py-4 px-4">
+                                                <div className="font-bold text-slate-800">{order.customer?.name}</div>
+                                                <div className="capitalize text-[10px] text-slate-400 font-semibold">{order.customer_level}</div>
+                                            </td>
+                                            <td className="py-4 px-4 text-slate-400 font-semibold text-xs">{formatDate(order.created_at)}</td>
+                                            <td className="py-4 px-4 font-bold text-slate-800 text-right">{fmt(order.grand_total)}</td>
+                                            <td className="py-4 px-4 text-center">
+                                                {pStatus ? (
+                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${pStatus.bg} ${pStatus.text}`}>
+                                                        {pStatus.label}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-500">Belum ada payment</span>
+                                                )}
+                                            </td>
+                                            <td className="py-4 px-4 text-center">
+                                                {sStatus ? (
+                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${sStatus.bg} ${sStatus.text}`}>
+                                                        {sStatus.label}
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-500">Belum dikirim</span>
+                                                )}
+                                            </td>
+                                            <td className="py-4 px-4 text-center">
+                                                <span className={`inline-flex px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider ${oCfg.badge}`}>{oCfg.label}</span>
+                                            </td>
+                                            <td className="py-4 px-4">
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <button
+                                                        onClick={() => { setSelectedOrderTab('detail'); setSelectedOrder(order); }}
+                                                        className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg text-xs font-bold transition cursor-pointer"
+                                                        title="Lihat Detail"
+                                                    >
+                                                        Detail
+                                                    </button>
+                                                    
+                                                    {order.status === 'pending' && !order.payment && (
+                                                        <button onClick={() => { setSelectedOrderTab('payment'); setSelectedOrder(order); }} className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold transition cursor-pointer" title="Buat Payment">
+                                                            Payment
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {(order.status === 'processing' || (order.status === 'pending' && order.payment?.status === 'paid')) && (!order.shipment || order.shipment.status === 'draft' || order.shipment.status === 'cancelled') && (
+                                                        <button onClick={() => { setSelectedOrderTab('shipment'); setSelectedOrder(order); }} className="px-2.5 py-1 bg-violet-50 hover:bg-violet-100 text-violet-750 border border-violet-200 rounded-lg text-xs font-bold transition animate-pulse cursor-pointer" title="Proses Kirim / Resi">
+                                                            Kirim
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* Pagination */}
-            {pagination.last_page > 1 && (
-                <div className="flex items-center justify-between pt-2">
-                    <p className="text-sm text-slate-500">Halaman {pagination.current_page} dari {pagination.last_page} · {pagination.total} order</p>
-                    <div className="flex gap-2">
-                        <button disabled={pagination.current_page <= 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition">← Sebelumnya</button>
-                        <button disabled={pagination.current_page >= pagination.last_page} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 disabled:opacity-40 hover:bg-slate-50 transition">Berikutnya →</button>
+            {/* Pagination Controls */}
+            {!loading && pagination.total > 0 && (
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/60 shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 text-xs font-bold text-slate-500">
+                    <div>
+                        Menampilkan {pagination.from || 0} sampai {pagination.to || 0} dari {pagination.total || 0} order
                     </div>
+                    {pagination.last_page > 1 && (
+                        <div className="flex items-center justify-center space-x-1">
+                            <button
+                                disabled={pagination.current_page === 1}
+                                onClick={() => setPage(pagination.current_page - 1)}
+                                className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                                title="Halaman Sebelumnya"
+                            >
+                                <ChevronLeft size={14} />
+                            </button>
+                            
+                            {Array.from({ length: pagination.last_page }).map((_, index) => {
+                                const pageNum = index + 1;
+                                const isActive = pageNum === pagination.current_page;
+                                return (
+                                    <button
+                                        key={pageNum}
+                                        onClick={() => setPage(pageNum)}
+                                        className={`h-8 w-8 rounded-xl flex items-center justify-center transition border cursor-pointer ${
+                                            isActive 
+                                                ? 'bg-red-650 border-red-650 text-white shadow-xs' 
+                                                : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                        }`}
+                                    >
+                                        {pageNum}
+                                    </button>
+                                );
+                            })}
+
+                            <button
+                                disabled={pagination.current_page === pagination.last_page}
+                                onClick={() => setPage(pagination.current_page + 1)}
+                                className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition cursor-pointer"
+                                title="Halaman Selanjutnya"
+                            >
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* Modals */}
             {showCreateModal && <CreateOrderModal onClose={() => setShowCreateModal(false)} onCreated={handleCreated} />}
-            {selectedOrder && <OrderDetailPanel order={selectedOrder} onClose={() => setSelectedOrder(null)} onRefresh={fetchOrders} />}
+            {selectedOrder && <OrderDetailPanel order={selectedOrder} onClose={() => { setSelectedOrder(null); setSelectedOrderTab('detail'); }} onRefresh={fetchOrders} initialTab={selectedOrderTab} />}
+
+            {/* Bulk Results Modal */}
+            {bulkResults && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+                        <div className="p-5 border-b flex items-center justify-between bg-slate-50">
+                            <h3 className="text-base font-black text-slate-800 flex items-center gap-2">
+                                <Truck size={18} className="text-violet-600" />
+                                Hasil Generate Resi Masal
+                            </h3>
+                            <button onClick={() => setBulkResults(null)} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="flex-1 p-5 overflow-y-auto max-h-[350px] space-y-2.5">
+                            {bulkResults.map((res, i) => (
+                                <div key={i} className={`p-3 rounded-xl border flex items-start gap-2.5 text-sm ${res.success ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                                    {res.success ? <CheckCircle size={16} className="text-green-500 mt-0.5 shrink-0" /> : <AlertCircle size={16} className="text-red-500 mt-0.5 shrink-0" />}
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-bold text-slate-900">{res.order_number || `Order ID: ${res.order_id}`}</p>
+                                        <p className="text-xs opacity-90 mt-0.5">{res.message}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="p-4 border-t bg-slate-50 flex justify-end">
+                            <button onClick={() => setBulkResults(null)} className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold text-sm transition">
+                                Selesai
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

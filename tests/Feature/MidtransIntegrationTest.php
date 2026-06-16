@@ -65,6 +65,7 @@ class MidtransIntegrationTest extends TestCase
                 'name' => 'Recipient Name',
                 'phone' => '0811111111',
                 'detail' => 'Recipient address details',
+                'postal_code' => '10110',
             ],
             'items' => [
                 [

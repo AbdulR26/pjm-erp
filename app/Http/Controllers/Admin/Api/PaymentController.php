@@ -196,8 +196,30 @@ class PaymentController extends Controller
             if ($newStatus === Payment::STATUS_PAID) {
                 $payment->update(['paid_at' => now(), 'payment_method' => $paymentType]);
                 $order->update(['status' => Order::STATUS_PROCESSING]);
+
+                // Notify customer of payment success
+                \App\Models\CustomerNotification::create([
+                    'customer_id' => $order->customer_id,
+                    'title' => 'Pembayaran Berhasil',
+                    'message' => "Pembayaran untuk pesanan {$order->order_number} telah kami terima. Pesanan sedang diproses.",
+                    'type' => 'payment',
+                    'link' => '?page=profile&tab=orders',
+                ]);
             } elseif (in_array($newStatus, [Payment::STATUS_EXPIRED, Payment::STATUS_CANCELLED, Payment::STATUS_FAILED])) {
                 $order->update(['status' => Order::STATUS_FAILED]);
+
+                $statusLabel = match($newStatus) {
+                    Payment::STATUS_EXPIRED   => 'kedaluwarsa',
+                    Payment::STATUS_CANCELLED => 'dibatalkan',
+                    default                   => 'gagal',
+                };
+                \App\Models\CustomerNotification::create([
+                    'customer_id' => $order->customer_id,
+                    'title' => 'Pembayaran ' . ucfirst($statusLabel),
+                    'message' => "Pembayaran untuk pesanan {$order->order_number} {$statusLabel}. Silakan coba lagi.",
+                    'type' => 'payment',
+                    'link' => '?page=profile&tab=orders',
+                ]);
             }
 
             $webhookLog->update(['status' => 'processed']);
@@ -234,10 +256,29 @@ class PaymentController extends Controller
     {
         $transactionStatus = $statusData['transaction_status'] ?? null;
         $fraudStatus       = $statusData['fraud_status'] ?? null;
+        $paymentType       = $statusData['payment_type'] ?? null;
 
         if ($transactionStatus) {
             $newStatus = $this->resolveMidtransStatus($transactionStatus, $fraudStatus);
-            $payment->update(['status' => $newStatus]);
+
+            DB::transaction(function () use ($payment, $newStatus, $paymentType, $fraudStatus, $statusData) {
+                $payment->update([
+                    'status' => $newStatus,
+                    'midtrans_transaction_id' => $statusData['transaction_id'] ?? $payment->midtrans_transaction_id,
+                    'midtrans_payment_type'   => $paymentType ?? $payment->midtrans_payment_type,
+                    'midtrans_fraud_status'   => $fraudStatus ?? $payment->midtrans_fraud_status,
+                ]);
+
+                $order = $payment->order;
+                if ($order) {
+                    if ($newStatus === Payment::STATUS_PAID) {
+                        $payment->update(['paid_at' => now(), 'payment_method' => $paymentType ?? $payment->payment_method]);
+                        $order->update(['status' => Order::STATUS_PROCESSING]);
+                    } elseif (in_array($newStatus, [Payment::STATUS_EXPIRED, Payment::STATUS_CANCELLED, Payment::STATUS_FAILED])) {
+                        $order->update(['status' => Order::STATUS_FAILED]);
+                    }
+                }
+            });
         }
 
         return $payment->fresh();

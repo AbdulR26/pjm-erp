@@ -46,6 +46,9 @@ class RoleAndUserSeeder extends Seeder
             'email' => 'budi@gmail.com',
             'phone' => '08123456789',
             'address' => 'Jl. Jend. Sudirman No. 10, Jakarta Pusat',
+            'postal_code' => '10110',
+            'latitude' => -6.1805,
+            'longitude' => 106.8285,
         ]);
 
         Customer::create([
@@ -53,6 +56,9 @@ class RoleAndUserSeeder extends Seeder
             'email' => 'siti@gmail.com',
             'phone' => '08567891234',
             'address' => 'Jl. Margonda Raya No. 45, Depok',
+            'postal_code' => '16424',
+            'latitude' => -6.3725,
+            'longitude' => 106.8285,
         ]);
 
         Customer::create([
@@ -60,6 +66,9 @@ class RoleAndUserSeeder extends Seeder
             'email' => 'andi@gmail.com',
             'phone' => '08789012345',
             'address' => 'Jl. Ahmad Yani No. 88, Bekasi Selatan',
+            'postal_code' => '17141',
+            'latitude' => -6.2425,
+            'longitude' => 106.9995,
         ]);
     }
 }

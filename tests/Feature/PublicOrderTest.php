@@ -74,6 +74,9 @@ class PublicOrderTest extends TestCase
                 'name' => 'Adit E-Commerce',
                 'phone' => '081234567890',
                 'detail' => 'Jalan Merdeka No. 10, Jakarta Pusat',
+                'postal_code' => '10110',
+                'latitude' => -6.1751,
+                'longitude' => 106.8272,
             ],
             'items' => [
                 [
@@ -138,6 +141,9 @@ class PublicOrderTest extends TestCase
             'status' => 'draft',
             'destination_contact_name' => 'Adit E-Commerce',
             'destination_address' => 'Jalan Merdeka No. 10, Jakarta Pusat',
+            'destination_postal_code' => '10110',
+            'destination_latitude' => -6.1751,
+            'destination_longitude' => 106.8272,
         ]);
     }
 
@@ -187,5 +193,67 @@ class PublicOrderTest extends TestCase
         $this->assertEquals('paid', $payment->status);
         $this->assertEquals('GoPay / QRIS', $payment->payment_method);
         $this->assertNotNull($payment->paid_at);
+    }
+
+    /**
+     * Test getting shipping rates successfully.
+     */
+    public function test_can_get_shipping_rates_successfully(): void
+    {
+        \Illuminate\Support\Facades\Http::fake([
+            'api.biteship.com/v1/rates/couriers' => \Illuminate\Support\Facades\Http::response([
+                'pricing' => [
+                    [
+                        'courier_code' => 'jne',
+                        'courier_name' => 'JNE',
+                        'courier_service_code' => 'reg',
+                        'courier_service_name' => 'Reguler',
+                        'duration' => '1-2',
+                        'price' => 15000,
+                    ],
+                    [
+                        'courier_code' => 'jnt',
+                        'courier_name' => 'J&T',
+                        'courier_service_code' => 'ez',
+                        'courier_service_name' => 'EZ',
+                        'duration' => '2-3',
+                        'price' => 12000,
+                    ]
+                ]
+            ], 200)
+        ]);
+
+        $response = $this->withSession(['customer' => [
+            'id' => $this->customer->id,
+            'name' => $this->customer->name,
+            'email' => $this->customer->email,
+        ]])->postJson('/api/shipment/rates', [
+            'postal_code' => '10110',
+            'latitude' => -6.1751,
+            'longitude' => 106.8272,
+            'items' => [
+                [
+                    'product_id' => $this->product->id,
+                    'variant_name' => 'Denso Avanza',
+                    'quantity' => 2,
+                ]
+            ]
+        ]);
+
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'rates' => [
+                '*' => [
+                    'courier_code',
+                    'courier_name',
+                    'courier_service_code',
+                    'courier_service_name',
+                    'duration',
+                    'price',
+                ]
+            ]
+        ]);
+        
+        $this->assertCount(2, $response->json('rates'));
     }
 }

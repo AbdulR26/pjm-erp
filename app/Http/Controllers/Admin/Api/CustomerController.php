@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
+use App\Models\CustomerAddress;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -14,7 +15,24 @@ class CustomerController extends Controller
      */
     public function index()
     {
-        $customers = Customer::orderBy('name', 'asc')->get();
+        $customers = Customer::with('addresses')->orderBy('name', 'asc')->get();
+
+        foreach ($customers as $customer) {
+            $primaryAddress = $customer->addresses->where('is_primary', true)->first();
+            if ($primaryAddress) {
+                $customer->province = $primaryAddress->province;
+                $customer->city = $primaryAddress->city;
+                $customer->district = $primaryAddress->district;
+                $customer->village = $primaryAddress->village;
+                $customer->address_detail = $primaryAddress->address;
+            } else {
+                $customer->province = '';
+                $customer->city = '';
+                $customer->district = '';
+                $customer->village = '';
+                $customer->address_detail = $customer->address;
+            }
+        }
 
         return response()->json([
             'status' => 'success',
@@ -31,10 +49,42 @@ class CustomerController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'email', 'max:255', 'unique:customers'],
             'phone' => ['nullable', 'string', 'max:20'],
+            'province' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'village' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string'],
+            'postal_code' => ['nullable', 'string', 'max:10'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
         ]);
 
-        $customer = Customer::create($validated);
+        $fullAddress = null;
+        if (!empty($validated['address'])) {
+            $fullAddress = $validated['address'];
+            if (!empty($validated['province'])) {
+                $fullAddress .= ', Kel. ' . ($validated['village'] ?? '') . ', Kec. ' . ($validated['district'] ?? '') . ', ' . ($validated['city'] ?? '') . ', ' . $validated['province'];
+            }
+        }
+
+        $customer = Customer::create(array_merge($validated, ['address' => $fullAddress]));
+
+        if (!empty($validated['address'])) {
+            CustomerAddress::create([
+                'customer_id' => $customer->id,
+                'name'        => $customer->name,
+                'phone'       => $customer->phone ?: '081234567890',
+                'province'    => $validated['province'] ?: '',
+                'city'        => $validated['city'] ?: '',
+                'district'    => $validated['district'] ?: '',
+                'village'     => $validated['village'] ?: '',
+                'address'     => $validated['address'],
+                'postal_code' => $validated['postal_code'] ?: '10110',
+                'latitude'    => $validated['latitude'] ?? null,
+                'longitude'   => $validated['longitude'] ?? null,
+                'is_primary'  => true,
+            ]);
+        }
 
         return response()->json([
             'status' => 'success',
@@ -54,10 +104,56 @@ class CustomerController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'string', 'email', 'max:255', Rule::unique('customers')->ignore($customer->id)],
             'phone' => ['nullable', 'string', 'max:20'],
+            'province' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'village' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string'],
+            'postal_code' => ['nullable', 'string', 'max:10'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
         ]);
 
-        $customer->update($validated);
+        $fullAddress = null;
+        if (!empty($validated['address'])) {
+            $fullAddress = $validated['address'];
+            if (!empty($validated['province'])) {
+                $fullAddress .= ', Kel. ' . ($validated['village'] ?? '') . ', Kec. ' . ($validated['district'] ?? '') . ', ' . ($validated['city'] ?? '') . ', ' . $validated['province'];
+            }
+        }
+
+        $customer->update(array_merge($validated, ['address' => $fullAddress]));
+
+        if (!empty($validated['address'])) {
+            $addr = CustomerAddress::where('customer_id', $customer->id)->where('is_primary', true)->first();
+            if ($addr) {
+                $addr->update([
+                    'province'    => $validated['province'] ?: '',
+                    'city'        => $validated['city'] ?: '',
+                    'district'    => $validated['district'] ?: '',
+                    'village'     => $validated['village'] ?: '',
+                    'address'     => $validated['address'],
+                    'postal_code' => $validated['postal_code'] ?: $addr->postal_code,
+                    'latitude'    => $validated['latitude'] ?? $addr->latitude,
+                    'longitude'   => $validated['longitude'] ?? $addr->longitude,
+                ]);
+            } else {
+                CustomerAddress::create([
+                    'customer_id' => $customer->id,
+                    'name'        => $customer->name,
+                    'phone'       => $customer->phone ?: '081234567890',
+                    'province'    => $validated['province'] ?: '',
+                    'city'        => $validated['city'] ?: '',
+                    'district'    => $validated['district'] ?: '',
+                    'village'     => $validated['village'] ?: '',
+                    'address'     => $validated['address'],
+                    'postal_code' => $validated['postal_code'] ?: '10110',
+                    'latitude'    => $validated['latitude'] ?? null,
+                    'longitude'   => $validated['longitude'] ?? null,
+                    'is_primary'  => true,
+                ]);
+            }
+        }
 
         return response()->json([
             'status' => 'success',

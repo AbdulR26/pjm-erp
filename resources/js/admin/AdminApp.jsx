@@ -13,6 +13,9 @@ import StockManagement from './StockManagement';
 import BannersManagement from './BannersManagement';
 import SettingsManagement from './SettingsManagement';
 import VoucherManagement from './VoucherManagement';
+import ChatManagement from './ChatManagement';
+import SupplierManagement from './SupplierManagement';
+import POManagement from './POManagement';
 
 export default function AdminApp() {
     const [user, setUser] = useState(null);
@@ -23,7 +26,7 @@ export default function AdminApp() {
         const path = window.location.pathname;
         const segments = path.split('/');
         const tab = segments[segments.length - 1];
-        const validTabs = ['dashboard', 'products', 'users', 'customers', 'orders', 'categories', 'attributes', 'stock', 'banners', 'settings', 'vouchers'];
+        const validTabs = ['dashboard', 'products', 'users', 'customers', 'orders', 'categories', 'attributes', 'stock', 'banners', 'settings', 'vouchers', 'chats', 'suppliers', 'purchase-orders'];
         return validTabs.includes(tab) ? tab : 'dashboard';
     };
 
@@ -65,7 +68,7 @@ export default function AdminApp() {
             const path = window.location.pathname;
             const segments = path.split('/');
             const tab = segments[segments.length - 1];
-            const validTabs = ['dashboard', 'products', 'users', 'customers', 'orders', 'categories', 'attributes', 'stock', 'banners', 'settings', 'vouchers'];
+            const validTabs = ['dashboard', 'products', 'users', 'customers', 'orders', 'categories', 'attributes', 'stock', 'banners', 'settings', 'vouchers', 'chats', 'suppliers', 'purchase-orders'];
             if (validTabs.includes(tab)) {
                 setCurrentTab(tab);
             } else {
@@ -123,6 +126,9 @@ export default function AdminApp() {
             {currentTab === 'vouchers'    && <VoucherManagement />}
             {currentTab === 'banners'     && <BannersManagement />}
             {currentTab === 'settings'    && user.roles.includes('admin') && <SettingsManagement />}
+            {currentTab === 'chats'       && <ChatManagement />}
+            {currentTab === 'suppliers'   && <SupplierManagement />}
+            {currentTab === 'purchase-orders' && <POManagement />}
         </Layout>
     );
 }

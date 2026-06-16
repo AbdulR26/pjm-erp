@@ -105,7 +105,7 @@ class BiteshipService
             throw new \Exception('Biteship API Key is not configured.');
         }
 
-        $order->load(['customer', 'items.productVariant.product']);
+        $order->load(['customer', 'items.productVariant.product', 'shipment']);
         $customer = $order->customer;
 
         // Origin details (defaults to config origin if shipperDetails doesn't supply)
@@ -118,9 +118,9 @@ class BiteshipService
         $originLng = $shipperDetails['origin_longitude'] ?? ($this->origin['longitude'] ?? 0);
 
         // Destination details (we can extract from order address or prompt coordinates if present)
-        $destinationLat = $shipperDetails['destination_latitude'] ?? 0;
-        $destinationLng = $shipperDetails['destination_longitude'] ?? 0;
-        $destinationPostalCode = $shipperDetails['destination_postal_code'] ?? 0;
+        $destinationLat = $shipperDetails['destination_latitude'] ?? ($order->shipment?->destination_latitude ?? 0);
+        $destinationLng = $shipperDetails['destination_longitude'] ?? ($order->shipment?->destination_longitude ?? 0);
+        $destinationPostalCode = $shipperDetails['destination_postal_code'] ?? ($order->shipment?->destination_postal_code ?? 0);
 
         // Parse items to determine weights (checking dynamic attributes first, fallback to 1000g)
         $items = $order->items->map(function ($item) {
@@ -162,18 +162,18 @@ class BiteshipService
                 'longitude' => (float) $originLng,
             ],
 
-            'destination_contact_name' => $order->shipping_recipient_name ?: $customer->name,
-            'destination_contact_phone' => $order->shipping_recipient_phone ?: ($customer->phone ?: '081234567890'),
+            'destination_contact_name' => $order->shipping_recipient_name ?: ($order->shipment?->destination_contact_name ?: ($customer->name ?? '')),
+            'destination_contact_phone' => $order->shipping_recipient_phone ?: ($order->shipment?->destination_contact_phone ?: ($customer->phone ?? '081234567890')),
             'destination_contact_email' => $customer->email ?: 'customer@email.com',
-            'destination_address' => $order->shipping_address ?: ($customer->address ?: 'Alamat Penerima'),
+            'destination_address' => $order->shipping_address ?: ($order->shipment?->destination_address ?: ($customer->address ?? 'Alamat Penerima')),
             'destination_postal_code' => (int) $destinationPostalCode ?: null,
             'destination_coordinate' => [
                 'latitude' => (float) $destinationLat,
                 'longitude' => (float) $destinationLng,
             ],
 
-            'courier_company' => strtolower($order->shipping_courier),
-            'courier_type' => strtolower($order->shipping_service),
+            'courier_company' => strtolower($order->shipping_courier ?: ($order->shipment?->courier_company ?? '')),
+            'courier_type' => strtolower($order->shipping_service ?: ($order->shipment?->courier_service ?? '')),
             'delivery_type' => 'now', // 'now', 'scheduled'
             'items' => $items,
         ];

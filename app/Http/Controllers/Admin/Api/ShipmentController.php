@@ -16,6 +16,126 @@ class ShipmentController extends Controller
     public function __construct(protected BiteshipService $biteshipService) {}
 
     /**
+     * Book courier and generate waybills (resi) in bulk.
+     */
+    public function bulkStore(Request $request)
+    {
+        $request->validate([
+            'order_ids' => 'required|array|min:1',
+            'order_ids.*' => 'exists:orders,id',
+        ]);
+
+        $orderIds = $request->order_ids;
+        $results = [];
+
+        foreach ($orderIds as $orderId) {
+            $order = Order::with(['customer', 'items', 'payment', 'shipment'])->find($orderId);
+
+            if (!$order) {
+                $results[] = [
+                    'order_id' => $orderId,
+                    'order_number' => null,
+                    'success' => false,
+                    'message' => 'Order tidak ditemukan.',
+                ];
+                continue;
+            }
+
+            $orderNumber = $order->order_number;
+
+            // Check payment status
+            if ($order->payment && !$order->payment->isPaid()) {
+                $results[] = [
+                    'order_id' => $orderId,
+                    'order_number' => $orderNumber,
+                    'success' => false,
+                    'message' => 'Order belum lunas.',
+                ];
+                continue;
+            }
+
+            // Check shipment status
+            $shipment = $order->shipment;
+            if ($shipment && !in_array($shipment->status, [Shipment::STATUS_DRAFT, Shipment::STATUS_CANCELLED])) {
+                $results[] = [
+                    'order_id' => $orderId,
+                    'order_number' => $orderNumber,
+                    'success' => false,
+                    'message' => 'Sudah memiliki pengiriman aktif dengan resi: ' . ($shipment->waybill_id ?? 'Belum ada resi'),
+                ];
+                continue;
+            }
+
+            if (!$shipment || empty($shipment->courier_company) || empty($shipment->courier_service)) {
+                $results[] = [
+                    'order_id' => $orderId,
+                    'order_number' => $orderNumber,
+                    'success' => false,
+                    'message' => 'Belum ada data pengiriman (draft). Silakan atur alamat/kurir terlebih dahulu.',
+                ];
+                continue;
+            }
+
+            DB::beginTransaction();
+            try {
+                if ($shipment->status === Shipment::STATUS_CANCELLED) {
+                    $shipment->update([
+                        'status' => Shipment::STATUS_DRAFT,
+                        'waybill_id' => null,
+                        'biteship_order_id' => null,
+                    ]);
+                }
+
+                $shipperDetails = [
+                    'shipper_name'          => $shipment->origin_contact_name ?? config('app.name'),
+                    'shipper_phone'         => $shipment->origin_contact_phone ?? '081234567890',
+                    'origin_address'        => $shipment->origin_address ?? 'Jl. Raya Putri Jaya Mobil No 1',
+                    'origin_postal_code'    => $shipment->origin_postal_code ?? config('biteship.origin.postal_code'),
+                    'destination_latitude'  => $shipment->destination_latitude ?? 0,
+                    'destination_longitude' => $shipment->destination_longitude ?? 0,
+                    'destination_postal_code' => $shipment->destination_postal_code,
+                ];
+
+                $order->setRelation('shipment', $shipment);
+                $biteshipResult = $this->biteshipService->createOrder($order, $shipperDetails);
+
+                $shipment->update([
+                    'biteship_order_id' => $biteshipResult['id'] ?? null,
+                    'waybill_id'        => $biteshipResult['courier']['waybill_id'] ?? null,
+                    'status'            => $biteshipResult['status'] ?? Shipment::STATUS_PICKUP_REQUESTED,
+                ]);
+
+                $order->update(['status' => Order::STATUS_SHIPPING]);
+
+                DB::commit();
+
+                $results[] = [
+                    'order_id' => $orderId,
+                    'order_number' => $orderNumber,
+                    'success' => true,
+                    'message' => 'Resi berhasil digenerate: ' . ($shipment->waybill_id ?? '-'),
+                    'waybill_id' => $shipment->waybill_id,
+                ];
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('ShipmentController@bulkStore error for order ' . $orderNumber, ['message' => $e->getMessage()]);
+                $results[] = [
+                    'order_id' => $orderId,
+                    'order_number' => $orderNumber,
+                    'success' => false,
+                    'message' => 'Biteship Error: ' . $e->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'message' => 'Proses generate resi masal selesai.',
+            'results' => $results,
+        ]);
+    }
+
+
+    /**
      * Get shipping rates from Biteship for an order.
      */
     public function rates(Request $request, string $orderId)
@@ -68,7 +188,7 @@ class ShipmentController extends Controller
             return response()->json(['message' => 'Order harus sudah dibayar sebelum membuat pengiriman.'], 422);
         }
 
-        if ($order->shipment && !in_array($order->shipment->status, [Shipment::STATUS_CANCELLED])) {
+        if ($order->shipment && !in_array($order->shipment->status, [Shipment::STATUS_DRAFT, Shipment::STATUS_CANCELLED])) {
             return response()->json(['message' => 'Order ini sudah memiliki pengiriman aktif.'], 422);
         }
 
@@ -93,6 +213,10 @@ class ShipmentController extends Controller
 
         DB::beginTransaction();
         try {
+            if ($order->shipment) {
+                $order->shipment->delete();
+            }
+
             // Create shipment record
             $shipment = Shipment::create([
                 'order_id'                  => $order->id,

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, ShoppingCart, Bell, HelpCircle, User, Car, MessageSquare, ChevronDown, LogOut } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Search, ShoppingCart, Bell, HelpCircle, User, Car, MessageSquare, ChevronDown, LogOut, X, CheckCheck, Trash2 } from 'lucide-react';
 
 const FacebookIcon = ({ size = 16, className = "" }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -15,12 +15,50 @@ const InstagramIcon = ({ size = 16, className = "" }) => (
     </svg>
 );
 
-export default function Header({ settings = {}, currentUser, cartCount, searchQuery, setSearchQuery, onOpenCart, onLogoClick, onLogout, onLoginClick, onProfileClick }) {
+function timeAgo(dateString) {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffSec < 60) return 'Baru saja';
+    if (diffMin < 60) return `${diffMin} menit lalu`;
+    if (diffHour < 24) return `${diffHour} jam lalu`;
+    if (diffDay < 7) return `${diffDay} hari lalu`;
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export default function Header({ settings = {}, currentUser, cartCount, searchQuery, setSearchQuery, onOpenCart, onLogoClick, onLogout, onLoginClick, onProfileClick, notifications = [], unreadCount = 0, onNotificationClick, onMarkAllRead, onDeleteNotification }) {
     const storeName = settings.store_name || 'Putri Jaya Mobil';
     const facebookLink = settings.social_facebook || '#';
     const instagramLink = settings.social_instagram || '#';
     const whatsappNumber = settings.store_whatsapp || '6281234567890';
     const whatsappLink = `https://wa.me/${whatsappNumber}`;
+
+    const [isNotifOpen, setIsNotifOpen] = useState(false);
+    const notifRef = useRef(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (notifRef.current && !notifRef.current.contains(e.target)) {
+                setIsNotifOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const notifTypeIcon = (type) => {
+        switch (type) {
+            case 'payment': return '💳';
+            case 'shipment': return '🚚';
+            default: return '📦';
+        }
+    };
 
     return (
         <header className="bg-linear-to-r from-red-600 to-red-950 text-white shadow-md sticky top-0 z-40">
@@ -42,10 +80,101 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                         </div>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <a href="#" className="flex items-center space-x-1 hover:text-red-200 transition">
-                            <Bell size={13} />
-                            <span>Notifikasi</span>
-                        </a>
+                        {/* Notification Bell (Top Bar - Desktop) */}
+                        {currentUser && (
+                            <div className="relative" ref={notifRef}>
+                                <button
+                                    onClick={() => setIsNotifOpen(!isNotifOpen)}
+                                    className="flex items-center space-x-1 hover:text-red-200 transition cursor-pointer relative"
+                                >
+                                    <Bell size={13} />
+                                    <span>Notifikasi</span>
+                                    {unreadCount > 0 && (
+                                        <span className="absolute -top-2.5 -right-3.5 bg-yellow-400 text-red-950 font-extrabold text-[9px] h-4 min-w-[16px] flex items-center justify-center rounded-full border border-red-600 px-0.5 animate-pulse">
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {/* Notification Dropdown */}
+                                {isNotifOpen && (
+                                    <div className="absolute right-0 top-full mt-3 w-[380px] bg-white text-slate-800 rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50" style={{ maxHeight: '480px' }}>
+                                        {/* Header */}
+                                        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/80">
+                                            <h3 className="text-sm font-extrabold text-slate-800 tracking-tight">Notifikasi</h3>
+                                            <div className="flex items-center gap-2">
+                                                {unreadCount > 0 && (
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); onMarkAllRead?.(); }}
+                                                        className="text-[11px] text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 cursor-pointer transition"
+                                                    >
+                                                        <CheckCheck size={12} />
+                                                        Tandai Semua Dibaca
+                                                    </button>
+                                                )}
+                                                <button onClick={() => setIsNotifOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer p-0.5">
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* List */}
+                                        <div className="overflow-y-auto" style={{ maxHeight: '380px' }}>
+                                            {notifications.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                                                    <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+                                                        <Bell size={24} className="text-slate-300" />
+                                                    </div>
+                                                    <p className="text-slate-400 text-sm font-semibold">Belum ada notifikasi</p>
+                                                    <p className="text-slate-300 text-xs mt-1">Notifikasi pesanan Anda akan muncul di sini</p>
+                                                </div>
+                                            ) : (
+                                                notifications.map(notif => (
+                                                    <div
+                                                        key={notif.id}
+                                                        className={`flex items-start gap-3 px-5 py-3.5 border-b border-slate-50 hover:bg-slate-50/80 transition cursor-pointer group ${!notif.is_read ? 'bg-red-50/40' : ''}`}
+                                                        onClick={() => { onNotificationClick?.(notif); setIsNotifOpen(false); }}
+                                                    >
+                                                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center shrink-0 text-base">
+                                                            {notifTypeIcon(notif.type)}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <h4 className={`text-xs font-bold leading-snug truncate ${!notif.is_read ? 'text-slate-800' : 'text-slate-500'}`}>
+                                                                    {notif.title}
+                                                                </h4>
+                                                                {!notif.is_read && (
+                                                                    <span className="w-2 h-2 rounded-full bg-red-500 shrink-0 mt-1"></span>
+                                                                )}
+                                                            </div>
+                                                            <p className={`text-[11px] leading-relaxed mt-0.5 line-clamp-2 ${!notif.is_read ? 'text-slate-600' : 'text-slate-400'}`}>
+                                                                {notif.message}
+                                                            </p>
+                                                            <span className="text-[10px] text-slate-300 font-medium mt-1 block">
+                                                                {timeAgo(notif.created_at)}
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); onDeleteNotification?.(notif.id); }}
+                                                            className="opacity-0 group-hover:opacity-100 text-slate-300 hover:text-red-500 transition p-1 shrink-0 cursor-pointer"
+                                                            title="Hapus notifikasi"
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </button>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        {!currentUser && (
+                            <a href="#" className="flex items-center space-x-1 hover:text-red-200 transition">
+                                <Bell size={13} />
+                                <span>Notifikasi</span>
+                            </a>
+                        )}
                         <a href="#" className="flex items-center space-x-1 hover:text-red-200 transition">
                             <HelpCircle size={13} />
                             <span>Bantuan</span>
@@ -117,18 +246,37 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                         </div>
                     </a>
                     
-                    {/* Cart Icon Mobile Only */}
-                    <button 
-                        onClick={onOpenCart} 
-                        className="relative p-2 md:hidden hover:bg-white/10 rounded-full transition"
-                    >
-                        <ShoppingCart className="h-6 w-6" />
-                        {cartCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-yellow-400 text-red-950 font-bold text-[10px] h-5 w-5 flex items-center justify-center rounded-full border border-red-600 animate-pulse">
-                                {cartCount}
-                            </span>
+                    {/* Mobile Icons */}
+                    <div className="flex items-center gap-1 md:hidden">
+                        {/* Notification Bell Mobile */}
+                        {currentUser && (
+                            <div className="relative" ref={notifRef}>
+                                <button 
+                                    onClick={() => setIsNotifOpen(!isNotifOpen)}
+                                    className="relative p-2 hover:bg-white/10 rounded-full transition"
+                                >
+                                    <Bell className="h-5 w-5" />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute -top-0.5 -right-0.5 bg-yellow-400 text-red-950 font-bold text-[9px] h-4 min-w-[16px] flex items-center justify-center rounded-full border border-red-600 px-0.5 animate-pulse">
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+                            </div>
                         )}
-                    </button>
+                        {/* Cart Icon Mobile Only */}
+                        <button 
+                            onClick={onOpenCart} 
+                            className="relative p-2 hover:bg-white/10 rounded-full transition"
+                        >
+                            <ShoppingCart className="h-6 w-6" />
+                            {cartCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-yellow-400 text-red-950 font-bold text-[10px] h-5 w-5 flex items-center justify-center rounded-full border border-red-600 animate-pulse">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 {/* Search Bar */}
