@@ -1,5 +1,6 @@
 import React from 'react';
 import { Car, RefreshCw, Cpu, Disc, Droplets, Sparkles, Wrench, Flame } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const getCategoryStyle = (name) => {
     const n = name.toLowerCase();
@@ -26,6 +27,7 @@ const getCategoryStyle = (name) => {
 };
 
 export default function Categories({ categories = [], selectedCategory, setSelectedCategory }) {
+    const { t } = useLanguage();
     // Get unique category names that are either root categories (parent_id is null) or have active products
     const uniqueCategoryNames = Array.from(
         new Set(
@@ -36,7 +38,7 @@ export default function Categories({ categories = [], selectedCategory, setSelec
     ).slice(0, 7); // Show max 7 main categories + 'Semua' for cleaner UI layout
 
     const displayCategories = [
-        { name: 'Semua', label: 'Semua Produk', icon: Flame, bg: 'bg-red-50', text: 'text-red-650' },
+        { name: 'Semua', label: t('categories.all_products'), icon: Flame, bg: 'bg-red-50', text: 'text-red-650' },
         ...uniqueCategoryNames.map(name => {
             const style = getCategoryStyle(name);
             return {
@@ -54,7 +56,7 @@ export default function Categories({ categories = [], selectedCategory, setSelec
             {/* Title (Shopee Style) */}
             <div className="border-b border-slate-100 pb-3 mb-4 flex items-center justify-between">
                 <h3 className="text-xs md:text-sm font-extrabold text-slate-800 uppercase tracking-wide">
-                    Kategori Pilihan
+                    {t('categories.title')}
                 </h3>
             </div>
 

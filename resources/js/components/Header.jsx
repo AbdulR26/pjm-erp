@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, ShoppingCart, Bell, HelpCircle, User, Car, MessageSquare, ChevronDown, LogOut, X, CheckCheck, Trash2 } from 'lucide-react';
+import { Search, ShoppingCart, Bell, HelpCircle, User, Car, MessageSquare, ChevronDown, LogOut, X, CheckCheck, Trash2, Heart } from 'lucide-react';
+import { getStoreName, getWhatsAppLink } from '../utils/helpers';
+import { useLanguage } from '../context/LanguageContext';
 
 const FacebookIcon = ({ size = 16, className = "" }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -15,7 +17,7 @@ const InstagramIcon = ({ size = 16, className = "" }) => (
     </svg>
 );
 
-function timeAgo(dateString) {
+function timeAgo(dateString, t, language) {
     const now = new Date();
     const date = new Date(dateString);
     const diffMs = now - date;
@@ -24,22 +26,45 @@ function timeAgo(dateString) {
     const diffHour = Math.floor(diffMin / 60);
     const diffDay = Math.floor(diffHour / 24);
 
-    if (diffSec < 60) return 'Baru saja';
-    if (diffMin < 60) return `${diffMin} menit lalu`;
-    if (diffHour < 24) return `${diffHour} jam lalu`;
-    if (diffDay < 7) return `${diffDay} hari lalu`;
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (diffSec < 60) return t('header.time_just_now');
+    if (diffMin < 60) return t('header.time_minutes_ago', { count: diffMin });
+    if (diffHour < 24) return t('header.time_hours_ago', { count: diffHour });
+    if (diffDay < 7) return t('header.time_days_ago', { count: diffDay });
+    return date.toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export default function Header({ settings = {}, currentUser, cartCount, searchQuery, setSearchQuery, onOpenCart, onLogoClick, onLogout, onLoginClick, onProfileClick, notifications = [], unreadCount = 0, onNotificationClick, onMarkAllRead, onDeleteNotification }) {
-    const storeName = settings.store_name || 'Putri Jaya Mobil';
+export default function Header({ settings = {}, currentUser, cartCount, wishlistCount = 0, onOpenWishlist, searchQuery, setSearchQuery, onOpenCart, onLogoClick, onLogout, onLoginClick, onProfileClick, notifications = [], unreadCount = 0, onNotificationClick, onMarkAllRead, onDeleteNotification }) {
+    const { language, setLanguage, t } = useLanguage();
+    const storeName = getStoreName(settings);
     const facebookLink = settings.social_facebook || '#';
     const instagramLink = settings.social_instagram || '#';
-    const whatsappNumber = settings.store_whatsapp || '6281234567890';
-    const whatsappLink = `https://wa.me/${whatsappNumber}`;
+    const whatsappLink = getWhatsAppLink(settings);
 
     const [isNotifOpen, setIsNotifOpen] = useState(false);
     const notifRef = useRef(null);
+    const [isLangOpen, setIsLangOpen] = useState(false);
+    const langRef = useRef(null);
+
+    const [localQuery, setLocalQuery] = useState(searchQuery || '');
+
+    useEffect(() => {
+        setLocalQuery(searchQuery || '');
+    }, [searchQuery]);
+
+    const handleSearchSubmit = () => {
+        setSearchQuery(localQuery);
+    };
+
+    // Close language dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (langRef.current && !langRef.current.contains(e.target)) {
+                setIsLangOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -66,14 +91,14 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
             <div className="border-b border-white/10 text-xs py-1.5 hidden md:block">
                 <div className="max-w-[1200px] mx-auto px-4 md:px-6 flex justify-between items-center">
                     <div className="flex items-center space-x-4">
-                        <a href="#" className="hover:text-red-200 transition">Seller Centre</a>
+                        <a href="#" className="hover:text-red-200 transition">{t('header.seller_centre')}</a>
                         <span className="text-white/30">|</span>
-                        <a href="#" className="hover:text-red-200 transition">Mulai Jual</a>
+                        <a href="#" className="hover:text-red-200 transition">{t('header.start_selling')}</a>
                         <span className="text-white/30">|</span>
-                        <a href="#" className="hover:text-red-200 transition">Download Aplikasi</a>
+                        <a href="#" className="hover:text-red-200 transition">{t('header.download_app')}</a>
                         <span className="text-white/30">|</span>
                         <div className="flex items-center space-x-1.5">
-                            <span>Ikuti kami di</span>
+                            <span>{t('header.follow_us')}</span>
                             <a href={facebookLink} target="_blank" rel="noopener noreferrer" className="hover:text-red-200 transition"><FacebookIcon size={13} /></a>
                             <a href={instagramLink} target="_blank" rel="noopener noreferrer" className="hover:text-red-200 transition"><InstagramIcon size={13} /></a>
                             <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hover:text-red-200 transition"><MessageSquare size={13} /></a>
@@ -88,7 +113,7 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                                     className="flex items-center space-x-1 hover:text-red-200 transition cursor-pointer relative"
                                 >
                                     <Bell size={13} />
-                                    <span>Notifikasi</span>
+                                    <span>{t('header.notifications')}</span>
                                     {unreadCount > 0 && (
                                         <span className="absolute -top-2.5 -right-3.5 bg-yellow-400 text-red-950 font-extrabold text-[9px] h-4 min-w-[16px] flex items-center justify-center rounded-full border border-red-600 px-0.5 animate-pulse">
                                             {unreadCount > 99 ? '99+' : unreadCount}
@@ -101,7 +126,7 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                                     <div className="absolute right-0 top-full mt-3 w-[380px] bg-white text-slate-800 rounded-2xl shadow-2xl border border-slate-100 overflow-hidden z-50" style={{ maxHeight: '480px' }}>
                                         {/* Header */}
                                         <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50/80">
-                                            <h3 className="text-sm font-extrabold text-slate-800 tracking-tight">Notifikasi</h3>
+                                            <h3 className="text-sm font-extrabold text-slate-800 tracking-tight">{t('header.notifications')}</h3>
                                             <div className="flex items-center gap-2">
                                                 {unreadCount > 0 && (
                                                     <button
@@ -109,7 +134,7 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                                                         className="text-[11px] text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 cursor-pointer transition"
                                                     >
                                                         <CheckCheck size={12} />
-                                                        Tandai Semua Dibaca
+                                                        {t('header.mark_all_read')}
                                                     </button>
                                                 )}
                                                 <button onClick={() => setIsNotifOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer p-0.5">
@@ -125,8 +150,8 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                                                     <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
                                                         <Bell size={24} className="text-slate-300" />
                                                     </div>
-                                                    <p className="text-slate-400 text-sm font-semibold">Belum ada notifikasi</p>
-                                                    <p className="text-slate-300 text-xs mt-1">Notifikasi pesanan Anda akan muncul di sini</p>
+                                                    <p className="text-slate-400 text-sm font-semibold">{t('header.no_notifications')}</p>
+                                                    <p className="text-slate-300 text-xs mt-1">{t('header.order_notifications')}</p>
                                                 </div>
                                             ) : (
                                                 notifications.map(notif => (
@@ -135,7 +160,7 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                                                         className={`flex items-start gap-3 px-5 py-3.5 border-b border-slate-50 hover:bg-slate-50/80 transition cursor-pointer group ${!notif.is_read ? 'bg-red-50/40' : ''}`}
                                                         onClick={() => { onNotificationClick?.(notif); setIsNotifOpen(false); }}
                                                     >
-                                                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-50 to-red-100 flex items-center justify-center shrink-0 text-base">
+                                                        <div className="w-9 h-9 rounded-xl bg-linear-to-br from-red-50 to-red-100 flex items-center justify-center shrink-0 text-base">
                                                             {notifTypeIcon(notif.type)}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
@@ -151,7 +176,7 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                                                                 {notif.message}
                                                             </p>
                                                             <span className="text-[10px] text-slate-300 font-medium mt-1 block">
-                                                                {timeAgo(notif.created_at)}
+                                                                {timeAgo(notif.created_at, t, language)}
                                                             </span>
                                                         </div>
                                                         <button
@@ -172,16 +197,39 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                         {!currentUser && (
                             <a href="#" className="flex items-center space-x-1 hover:text-red-200 transition">
                                 <Bell size={13} />
-                                <span>Notifikasi</span>
+                                <span>{t('header.notifications')}</span>
                             </a>
                         )}
                         <a href="#" className="flex items-center space-x-1 hover:text-red-200 transition">
                             <HelpCircle size={13} />
-                            <span>Bantuan</span>
+                            <span>{t('header.help')}</span>
                         </a>
-                        <div className="flex items-center space-x-1 cursor-pointer hover:text-red-200 transition">
-                            <span>Bahasa Indonesia</span>
-                            <ChevronDown size={12} />
+                        <div className="relative" ref={langRef}>
+                            <button
+                                onClick={() => setIsLangOpen(!isLangOpen)}
+                                className="flex items-center space-x-1 cursor-pointer hover:text-red-200 transition font-semibold focus:outline-hidden"
+                            >
+                                <span>{language === 'id' ? 'Bahasa Indonesia' : 'English'}</span>
+                                <ChevronDown size={12} />
+                            </button>
+                            {isLangOpen && (
+                                <div className="absolute right-0 top-full mt-2 w-36 bg-white text-slate-800 rounded-lg shadow-xl border border-slate-100 py-1.5 z-50 text-xs font-semibold">
+                                    <button
+                                        onClick={() => { setLanguage('id'); setIsLangOpen(false); }}
+                                        className={`w-full text-left px-3.5 py-2 hover:bg-slate-50 transition cursor-pointer flex items-center justify-between ${language === 'id' ? 'text-red-600 font-bold bg-red-50/20' : ''}`}
+                                    >
+                                        <span>Bahasa Indonesia</span>
+                                        {language === 'id' && <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>}
+                                    </button>
+                                    <button
+                                        onClick={() => { setLanguage('en'); setIsLangOpen(false); }}
+                                        className={`w-full text-left px-3.5 py-2 hover:bg-slate-50 transition cursor-pointer flex items-center justify-between ${language === 'en' ? 'text-red-600 font-bold bg-red-50/20' : ''}`}
+                                    >
+                                        <span>English</span>
+                                        {language === 'en' && <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>}
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         {currentUser ? (
                             <div className="flex items-center space-x-2 font-semibold">
@@ -200,10 +248,10 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                                 <button
                                     onClick={onLogout}
                                     className="flex items-center space-x-1 text-red-200 hover:text-white transition cursor-pointer ml-1 border-l border-white/20 pl-2"
-                                    title="Keluar"
+                                    title={t('header.logout')}
                                 >
                                     <LogOut size={12} />
-                                    <span>Keluar</span>
+                                    <span>{t('header.logout')}</span>
                                 </button>
                             </div>
                         ) : (
@@ -212,7 +260,7 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                                 className="flex items-center space-x-1.5 cursor-pointer hover:text-red-200 transition font-semibold"
                             >
                                 <User size={13} />
-                                <span>Masuk</span>
+                                <span>{t('header.login')}</span>
                             </button>
                         )}
                     </div>
@@ -264,6 +312,18 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                                 </button>
                             </div>
                         )}
+                        {/* Wishlist Icon Mobile */}
+                        <button 
+                            onClick={onOpenWishlist} 
+                            className="relative p-2 hover:bg-white/10 rounded-full transition mr-1"
+                        >
+                            <Heart className={`h-6 w-6 ${wishlistCount > 0 ? 'fill-yellow-400 text-yellow-400' : 'text-white'}`} />
+                            {wishlistCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-yellow-400 text-red-950 font-bold text-[10px] h-5 w-5 flex items-center justify-center rounded-full border border-red-600 animate-pulse">
+                                    {wishlistCount}
+                                </span>
+                            )}
+                        </button>
                         {/* Cart Icon Mobile Only */}
                         <button 
                             onClick={onOpenCart} 
@@ -284,18 +344,26 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                     <div className="relative flex items-center bg-white rounded-lg p-1 shadow-inner text-slate-800">
                         <input
                             type="text"
-                            placeholder="Cari mobil impian Anda, aksesoris premium, ban, oli..."
+                            placeholder={t('header.search_placeholder')}
                             className="w-full pl-3 pr-10 py-2 text-sm focus:outline-none placeholder-slate-400 bg-transparent"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            value={localQuery}
+                            onChange={(e) => setLocalQuery(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    handleSearchSubmit();
+                                }
+                            }}
                         />
-                        <button className="bg-linear-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-5 py-2 rounded-md transition duration-200 shadow-md flex items-center justify-center">
+                        <button 
+                            onClick={handleSearchSubmit}
+                            className="bg-linear-to-r from-red-650 to-red-800 hover:from-red-700 hover:to-red-900 text-white px-5 py-2 rounded-md transition duration-200 shadow-md flex items-center justify-center cursor-pointer"
+                        >
                             <Search className="h-4 w-4" />
                         </button>
                     </div>
                     
                     <div className="hidden md:flex flex-wrap items-center mt-1.5 gap-x-3 gap-y-1 text-[11px] text-red-100/90">
-                        <span className="font-medium">Populer:</span>
+                        <span className="font-medium">{t('header.popular')}</span>
                         <button onClick={() => setSearchQuery('Honda Civic')} className="hover:underline">Honda Civic</button>
                         <button onClick={() => setSearchQuery('Velg HSR')} className="hover:underline">Velg HSR</button>
                         <button onClick={() => setSearchQuery('Coating')} className="hover:underline">Coating Ceramic</button>
@@ -304,14 +372,30 @@ export default function Header({ settings = {}, currentUser, cartCount, searchQu
                     </div>
                 </div>
 
-                {/* Cart Icon Desktop */}
-                <div className="hidden md:flex items-center space-x-6">
+                {/* Wishlist & Cart Icon Desktop */}
+                <div className="hidden md:flex items-center space-x-4">
+                    {/* Wishlist Button */}
+                    <button 
+                        onClick={onOpenWishlist} 
+                        className="relative p-2.5 hover:bg-white/10 rounded-xl transition duration-300 group flex items-center space-x-2 border border-white/10 bg-white/5"
+                        title={t('wishlist.title')}
+                    >
+                        <Heart className={`h-6 w-6 transition group-hover:scale-105 ${wishlistCount > 0 ? 'fill-yellow-400 text-yellow-400' : 'text-white'}`} />
+                        <span className="text-sm font-medium hidden lg:inline">{t('header.wishlist')}</span>
+                        {wishlistCount > 0 && (
+                            <span className="absolute -top-2 -right-2 bg-yellow-400 text-red-950 font-extrabold text-xs h-5 w-5 flex items-center justify-center rounded-full border-2 border-red-700 shadow-md">
+                                {wishlistCount}
+                            </span>
+                        )}
+                    </button>
+
+                    {/* Cart Button */}
                     <button 
                         onClick={onOpenCart} 
                         className="relative p-2.5 hover:bg-white/10 rounded-xl transition duration-300 group flex items-center space-x-2 border border-white/10 bg-white/5"
                     >
                         <ShoppingCart className="h-6 w-6 group-hover:scale-105 transition" />
-                        <span className="text-sm font-medium hidden lg:inline">Keranjang</span>
+                        <span className="text-sm font-medium hidden lg:inline">{t('header.cart')}</span>
                         {cartCount > 0 && (
                             <span className="absolute -top-2 -right-2 bg-yellow-400 text-red-950 font-extrabold text-xs h-5 w-5 flex items-center justify-center rounded-full border-2 border-red-700 shadow-md">
                                 {cartCount}

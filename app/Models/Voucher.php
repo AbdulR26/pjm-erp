@@ -64,8 +64,12 @@ class Voucher extends Model
     /**
      * Calculate discount amount.
      */
-    public function calculateDiscount(float $subtotal): float
+    public function calculateDiscount(float $subtotal, float $shippingCost = 0): float
     {
+        if ($this->type === 'free_shipping') {
+            return (float) min($this->value, $shippingCost);
+        }
+
         if ($this->type === 'percent') {
             $discount = $subtotal * ($this->value / 100);
             if ($this->max_discount && $discount > $this->max_discount) {

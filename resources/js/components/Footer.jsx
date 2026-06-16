@@ -1,5 +1,7 @@
 import React from 'react';
 import { MessageCircle, ShieldCheck, Award, ThumbsUp } from 'lucide-react';
+import { getStoreName, getWhatsAppLink } from '../utils/helpers';
+import { useLanguage } from '../context/LanguageContext';
 
 const FacebookIcon = ({ size = 16, className = "" }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -22,13 +24,13 @@ const TwitterIcon = ({ size = 16, className = "" }) => (
 );
 
 export default function Footer({ settings = {} }) {
-    const storeName = settings.store_name || 'Putri Jaya Mobil';
+    const { t } = useLanguage();
+    const storeName = getStoreName(settings);
     const storeAddress = settings.store_address || 'Showroom Utama: Jl. Raya Jenderal Sudirman No. 45, Bekasi Barat, Jawa Barat.';
     const facebookLink = settings.social_facebook || '#';
     const instagramLink = settings.social_instagram || '#';
     const tiktokLink = settings.social_tiktok || '#';
-    const whatsappNumber = settings.store_whatsapp || '6281234567890';
-    const whatsappLink = `https://wa.me/${whatsappNumber}`;
+    const whatsappLink = getWhatsAppLink(settings);
 
     return (
         <footer className="bg-zinc-900 text-slate-300">
@@ -40,8 +42,8 @@ export default function Footer({ settings = {} }) {
                             <ShieldCheck className="h-6 w-6 text-yellow-400" />
                         </div>
                         <div>
-                            <h4 className="font-bold text-sm">Jaminan Keamanan 100%</h4>
-                            <p className="text-xs text-red-100 mt-0.5">Semua transaksi diverifikasi oleh staf ahli kami secara manual.</p>
+                            <h4 className="font-bold text-sm">{t('footer.security_guarantee')}</h4>
+                            <p className="text-xs text-red-100 mt-0.5">{t('footer.security_guarantee_desc')}</p>
                         </div>
                     </div>
                     <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4">
@@ -49,8 +51,8 @@ export default function Footer({ settings = {} }) {
                             <Award className="h-6 w-6 text-yellow-400" />
                         </div>
                         <div>
-                            <h4 className="font-bold text-sm">Produk Bergaransi & Original</h4>
-                            <p className="text-xs text-red-100 mt-0.5">Jaminan keaslian onderdil atau uang kembali penuh.</p>
+                            <h4 className="font-bold text-sm">{t('footer.original_product')}</h4>
+                            <p className="text-xs text-red-100 mt-0.5">{t('footer.original_product_desc')}</p>
                         </div>
                     </div>
                     <div className="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4">
@@ -58,8 +60,8 @@ export default function Footer({ settings = {} }) {
                             <ThumbsUp className="h-6 w-6 text-yellow-400" />
                         </div>
                         <div>
-                            <h4 className="font-bold text-sm">Layanan Pelanggan Responsif</h4>
-                            <p className="text-xs text-red-100 mt-0.5">Staf support WhatsApp kami siap melayani Anda 24/7 jam kerja.</p>
+                            <h4 className="font-bold text-sm">{t('footer.responsive_service')}</h4>
+                            <p className="text-xs text-red-100 mt-0.5">{t('footer.responsive_service_desc')}</p>
                         </div>
                     </div>
                 </div>
@@ -69,33 +71,33 @@ export default function Footer({ settings = {} }) {
             <div className="max-w-[1200px] mx-auto px-4 md:px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
                 {/* Col 1 */}
                 <div>
-                    <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">Layanan Pelanggan</h5>
+                    <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">{t('footer.customer_service')}</h5>
                     <ul className="space-y-2.5 text-xs font-semibold">
-                        <li><a href="#" className="hover:text-white transition">Pusat Bantuan</a></li>
-                        <li><a href="#" className="hover:text-white transition">Cara Pembelian</a></li>
-                        <li><a href="#" className="hover:text-white transition">Pengiriman & Lacak</a></li>
-                        <li><a href="#" className="hover:text-white transition">Pengembalian Barang & Dana</a></li>
-                        <li><a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hover:text-white transition">Hubungi Kami (WhatsApp)</a></li>
+                        <li><a href="#" className="hover:text-white transition">{t('footer.help_center')}</a></li>
+                        <li><a href="#" className="hover:text-white transition">{t('footer.how_to_buy')}</a></li>
+                        <li><a href="#" className="hover:text-white transition">{t('footer.shipping_tracking')}</a></li>
+                        <li><a href="#" className="hover:text-white transition">{t('footer.refund_returns')}</a></li>
+                        <li><a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hover:text-white transition">{t('footer.contact_us')}</a></li>
                     </ul>
                 </div>
 
                 {/* Col 2 */}
                 <div>
-                    <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">Tentang Kami</h5>
+                    <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">{t('footer.about_us')}</h5>
                     <ul className="space-y-2.5 text-xs font-semibold">
-                        <li><a href="#" className="hover:text-white transition">Profil {storeName}</a></li>
-                        <li><a href="#" className="hover:text-white transition">Karir / Rekrutmen</a></li>
-                        <li><a href="#" className="hover:text-white transition">Kebijakan Privasi</a></li>
-                        <li><a href="#" className="hover:text-white transition">Syarat & Ketentuan</a></li>
-                        <li><a href="#" className="hover:text-white transition">Lokasi Showroom & Bengkel</a></li>
+                        <li><a href="#" className="hover:text-white transition">{t('footer.profile', { storeName })}</a></li>
+                        <li><a href="#" className="hover:text-white transition">{t('footer.careers')}</a></li>
+                        <li><a href="#" className="hover:text-white transition">{t('footer.privacy_policy')}</a></li>
+                        <li><a href="#" className="hover:text-white transition">{t('footer.terms_conditions')}</a></li>
+                        <li><a href="#" className="hover:text-white transition">{t('footer.locations')}</a></li>
                     </ul>
                 </div>
 
                 {/* Col 3 */}
                 <div>
-                    <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">Pembayaran & Pengiriman</h5>
+                    <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">{t('footer.payment_shipping')}</h5>
                     <div className="mb-4">
-                        <p className="text-[10px] text-slate-500 font-bold mb-2">METODE TRANSFER BANK:</p>
+                        <p className="text-[10px] text-slate-500 font-bold mb-2">{t('footer.bank_transfer')}</p>
                         <div className="flex flex-wrap gap-2">
                             <span className="bg-slate-800 text-white text-[10px] font-extrabold px-2 py-1.5 rounded">BCA</span>
                             <span className="bg-slate-800 text-white text-[10px] font-extrabold px-2 py-1.5 rounded">MANDIRI</span>
@@ -104,7 +106,7 @@ export default function Footer({ settings = {} }) {
                         </div>
                     </div>
                     <div>
-                        <p className="text-[10px] text-slate-500 font-bold mb-2">MITRA LOGISTIK KAMI:</p>
+                        <p className="text-[10px] text-slate-500 font-bold mb-2">{t('footer.logistics_partners')}</p>
                         <div className="flex flex-wrap gap-2">
                             <span className="bg-slate-800 text-white text-[10px] font-extrabold px-2 py-1.5 rounded">J&T Cargo</span>
                             <span className="bg-slate-800 text-white text-[10px] font-extrabold px-2 py-1.5 rounded">JNE Express</span>
@@ -116,7 +118,7 @@ export default function Footer({ settings = {} }) {
 
                 {/* Col 4 */}
                 <div>
-                    <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">Ikuti Media Sosial Kami</h5>
+                    <h5 className="font-bold text-sm text-white uppercase tracking-wider mb-4">{t('footer.follow_social')}</h5>
                     <div className="flex items-center space-x-3 mb-6">
                         <a href={facebookLink} target="_blank" rel="noopener noreferrer" className="h-8 w-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-red-600 hover:text-white transition">
                             <FacebookIcon size={16} />
@@ -132,7 +134,7 @@ export default function Footer({ settings = {} }) {
                         </a>
                     </div>
                     
-                    <h5 className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-2">LAYANAN CUSTOMER {storeName.toUpperCase()}</h5>
+                    <h5 className="font-bold text-[10px] text-slate-500 uppercase tracking-wider mb-2">{t('footer.customer_care', { storeName: storeName.toUpperCase() })}</h5>
                     <p className="text-xs font-semibold text-slate-400 leading-normal">
                         {storeAddress}
                     </p>
@@ -142,8 +144,8 @@ export default function Footer({ settings = {} }) {
             {/* Bottom Bar */}
             <div className="border-t border-slate-800 py-6 text-center text-[11px] text-slate-500 font-medium">
                 <div className="max-w-[1200px] mx-auto px-4 md:px-6 flex flex-col md:flex-row md:justify-between items-center gap-3">
-                    <p>© {new Date().getFullYear()} {storeName}. Hak Cipta Dilindungi Undang-Undang.</p>
-                    <p className="text-slate-650">Simulasi Antarmuka E-Commerce Otomotif Premium. Dikembangkan dengan React & Laravel.</p>
+                    <p>{t('footer.copyright', { year: new Date().getFullYear(), storeName })}</p>
+                    <p className="text-slate-650">{t('footer.disclaimer')}</p>
                 </div>
             </div>
         </footer>

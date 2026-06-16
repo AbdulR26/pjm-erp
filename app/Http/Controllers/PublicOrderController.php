@@ -46,6 +46,7 @@ class PublicOrderController extends Controller
         $validated = $request->validate([
             'code' => 'required|string',
             'subtotal' => 'required|numeric|min:0',
+            'shipping_cost' => 'nullable|numeric|min:0',
         ]);
 
         $voucher = Voucher::where('code', $validated['code'])->first();
@@ -70,7 +71,8 @@ class PublicOrderController extends Controller
             ], 422);
         }
 
-        $discount = $voucher->calculateDiscount($validated['subtotal']);
+        $shippingCost = $validated['shipping_cost'] ?? 0;
+        $discount = $voucher->calculateDiscount($validated['subtotal'], $shippingCost);
 
         return response()->json([
             'valid' => true,
@@ -172,18 +174,31 @@ class PublicOrderController extends Controller
             // Apply Voucher if provided
             $discount = 0;
             $voucher = null;
+            $appliedVoucherIds = [];
+            $shippingCostVal = $validated['courier']['price'];
             if (!empty($validated['voucher_code'])) {
-                $voucher = Voucher::where('code', $validated['voucher_code'])->first();
-                if ($voucher) {
-                    if (!$voucher->isValidFor($subtotal)) {
-                        DB::rollBack();
-                        return response()->json(['message' => 'Voucher tidak valid untuk pembelanjaan ini.'], 422);
+                // Split by '+' for stacked vouchers
+                $voucherCodes = explode('+', $validated['voucher_code']);
+                foreach ($voucherCodes as $code) {
+                    $vch = Voucher::where('code', trim($code))->first();
+                    if ($vch) {
+                        if (!$vch->isValidFor($subtotal)) {
+                            DB::rollBack();
+                            return response()->json(['message' => "Voucher {$vch->code} tidak valid untuk pembelanjaan ini."], 422);
+                        }
+                        
+                        $vchDiscount = $vch->calculateDiscount($subtotal, $shippingCostVal);
+                        $discount += $vchDiscount;
+
+                        if (!$voucher) {
+                            $voucher = $vch;
+                        }
+                        $appliedVoucherIds[] = $vch->id;
                     }
-                    $discount = $voucher->calculateDiscount($subtotal);
                 }
             }
 
-            $shippingCost = $validated['courier']['price'];
+            $shippingCost = $shippingCostVal;
             $grandTotal = ($subtotal + $shippingCost) - $discount;
 
             // Create the Order
@@ -211,8 +226,8 @@ class PublicOrderController extends Controller
             }
 
             // Increment voucher used count
-            if ($voucher) {
-                $voucher->increment('used');
+            if (!empty($appliedVoucherIds)) {
+                Voucher::whereIn('id', $appliedVoucherIds)->increment('used');
             }
 
             // Create Payment record in pending state

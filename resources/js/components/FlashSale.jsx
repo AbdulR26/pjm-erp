@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Flame, ChevronRight } from 'lucide-react';
+import { formatRupiah } from '../utils/helpers';
 
 export default function FlashSale({ products = [], settings = {}, onProductClick, onSeeAll }) {
     const [timeLeft, setTimeLeft] = useState({
@@ -130,12 +131,12 @@ export default function FlashSale({ products = [], settings = {}, onProductClick
                         <div className="mb-3">
                             <div className="flex items-baseline space-x-1.5">
                                 <span className="text-sm md:text-base font-extrabold text-rose-600">
-                                    Rp {(prod.price).toLocaleString('id-ID')}
+                                    {formatRupiah(prod.price)}
                                 </span>
                             </div>
                             {prod.discount > 0 && prod.originalPrice && (
                                 <span className="text-[10px] md:text-xs text-slate-400 line-through">
-                                    Rp {(prod.originalPrice).toLocaleString('id-ID')}
+                                    {formatRupiah(prod.originalPrice)}
                                 </span>
                             )}
                         </div>

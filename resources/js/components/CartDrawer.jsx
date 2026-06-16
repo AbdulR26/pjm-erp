@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Trash2, Plus, Minus, ShoppingCart, Lock, Tag, ChevronRight } from 'lucide-react';
+import { formatRupiah, getStoreName, getWhatsAppLink } from '../utils/helpers';
 
 const SHOPEE_RED = '#c0001a';
 
@@ -10,11 +11,77 @@ export default function CartDrawer({
     onUpdateQty,
     onRemoveItem,
     onCheckout,
-    settings = {}
+    settings = {},
+    selectedVoucher,
+    setSelectedVoucher,
+    voucherDiscount,
+    setVoucherDiscount,
+    selectedShippingVoucher,
+    setSelectedShippingVoucher,
+    shippingDiscount,
+    setShippingDiscount
 }) {
-    const whatsappNumber = settings.store_whatsapp || '6281234567890';
-    const storeName = settings.store_name || 'Putri Jaya Mobil';
+    const storeName = getStoreName(settings);
     if (!isOpen) return null;
+
+    const [vouchers, setVouchers] = React.useState([]);
+    const [showVoucherDrawer, setShowVoucherDrawer] = React.useState(false);
+    const [voucherInputCode, setVoucherInputCode] = React.useState('');
+    const [voucherError, setVoucherError] = React.useState('');
+
+    React.useEffect(() => {
+        if (isOpen) {
+            fetch('/api/vouchers')
+                .then(res => res.json())
+                .then(data => {
+                    if (Array.isArray(data)) setVouchers(data);
+                })
+                .catch(err => console.error('Gagal mengambil data voucher:', err));
+        }
+    }, [isOpen]);
+
+    const handleApplyVoucher = async (code) => {
+        setVoucherError('');
+        try {
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            const response = await fetch('/api/vouchers/apply', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: JSON.stringify({ code, subtotal: totalPrice, shipping_cost: 0 })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.message || 'Gagal menerapkan voucher');
+            }
+
+            if (data.voucher.type === 'free_shipping') {
+                setSelectedShippingVoucher(data.voucher);
+                setShippingDiscount(0);
+            } else {
+                setSelectedVoucher(data.voucher);
+                setVoucherDiscount(data.discount);
+            }
+            setShowVoucherDrawer(false);
+            setVoucherInputCode('');
+        } catch (err) {
+            console.error(err);
+            setVoucherError(err.message || 'Terjadi kesalahan saat menerapkan voucher');
+        }
+    };
+
+    const handleRemoveVoucher = (type) => {
+        if (type === 'free_shipping') {
+            setSelectedShippingVoucher(null);
+            setShippingDiscount(0);
+        } else {
+            setSelectedVoucher(null);
+            setVoucherDiscount(0);
+        }
+    };
 
     const totalItems = cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
     const totalPrice = cartItems.reduce(
@@ -215,6 +282,78 @@ export default function CartDrawer({
                     gap: 4px; font-size: 10.5px; color: #bbb;
                     padding: 0 16px 12px; font-weight: 500;
                 }
+
+                /* Voucher Drawer */
+                .scp-input {
+                    width: 100%; padding: 10px 12px;
+                    border: 1px solid #e0e0e0; border-radius: 3px;
+                    font-size: 13px; font-weight: 500; color: #222;
+                    outline: none;
+                    transition: border-color 0.14s;
+                }
+                .scp-input:focus { border-color: #c0001a; }
+                .vch-drawer-backdrop {
+                    position: fixed; inset: 0; z-index: 10000;
+                    background: rgba(0,0,0,0.5); display: flex;
+                    justify-content: flex-end;
+                }
+                .vch-drawer {
+                    background: #fff; width: 100%; max-width: 420px;
+                    height: 100%; display: flex; flex-direction: column;
+                    box-shadow: -5px 0 25px rgba(0,0,0,0.15);
+                    animation: vch-slide 0.26s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                }
+                @keyframes vch-slide {
+                    from { transform: translateX(100%); }
+                    to { transform: translateX(0); }
+                }
+                .vch-drawer-header {
+                    padding: 16px; border-bottom: 1px solid #f0f0f0;
+                    display: flex; align-items: center; justify-content: space-between;
+                }
+                .vch-drawer-title { font-size: 15px; font-weight: 700; color: #222; }
+                .vch-drawer-body { padding: 16px; flex: 1; overflow-y: auto; }
+                .vch-promo-input-box {
+                    display: flex; gap: 8px; margin-bottom: 16px;
+                }
+                .vch-btn-apply {
+                    background: #c0001a; color: #fff; border: none;
+                    padding: 0 16px; border-radius: 3px; font-size: 13px;
+                    font-weight: 700; cursor: pointer; transition: background 0.14s;
+                }
+                .vch-btn-apply:hover { background: #a30016; }
+                .vch-card {
+                    border: 1.5px solid #f0f0f0; border-radius: 6px;
+                    padding: 12px; margin-bottom: 12px; display: flex;
+                    align-items: center; justify-content: space-between;
+                    background: #fff; transition: border-color 0.14s;
+                }
+                .vch-card.selected {
+                    border-color: #c0001a; background: #fffcfc;
+                }
+                .vch-info { flex: 1; margin-right: 12px; }
+                .vch-code-badge {
+                    background: #fff0f0; color: #c0001a;
+                    font-size: 10px; font-weight: 800; padding: 2px 6px;
+                    border-radius: 3px; display: inline-block; margin-bottom: 6px;
+                    border: 0.5px solid #ffcccc;
+                }
+                .vch-name { font-size: 13px; font-weight: 700; color: #222; }
+                .vch-desc { font-size: 11px; color: #666; margin-top: 3px; }
+                .vch-min { font-size: 10px; color: #888; margin-top: 4px; }
+                .vch-select-btn {
+                    border: 1px solid #c0001a; color: #c0001a;
+                    background: none; font-size: 12px; font-weight: 700;
+                    padding: 5px 12px; border-radius: 3px; cursor: pointer;
+                    transition: all 0.14s;
+                }
+                .vch-select-btn:hover { background: #c0001a; color: #fff; }
+                .vch-select-btn.active {
+                    background: #c0001a; color: #fff;
+                }
+                .vch-select-btn:disabled {
+                    border-color: #ddd; color: #aaa; cursor: not-allowed;
+                }
             `}</style>
 
             <div className="sc-drawer" style={{ position: 'fixed', inset: 0, zIndex: 9999, overflow: 'hidden' }}>
@@ -252,11 +391,31 @@ export default function CartDrawer({
 
                     {/* Promo Bar */}
                     {cartItems.length > 0 && (
-                        <div className="sc-promo-bar">
-                            <Tag size={13} />
-                            <span>Gunakan kode voucher untuk hemat lebih banyak</span>
-                            <ChevronRight size={13} style={{ marginLeft: 'auto' }} />
-                        </div>
+                        (selectedVoucher || selectedShippingVoucher) ? (
+                            <div className="sc-promo-bar" onClick={() => setShowVoucherDrawer(true)} style={{ background: '#fff2f2' }}>
+                                <Tag size={13} />
+                                <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    Voucher Terpakai:
+                                    {selectedVoucher && (
+                                        <span className="sc-header-badge" style={{ background: '#c0001a', padding: '2px 6px', fontSize: 10 }}>
+                                            {selectedVoucher.code}
+                                        </span>
+                                    )}
+                                    {selectedShippingVoucher && (
+                                        <span className="sc-header-badge" style={{ background: '#22c55e', padding: '2px 6px', fontSize: 10 }}>
+                                            {selectedShippingVoucher.code}
+                                        </span>
+                                    )}
+                                </span>
+                                <ChevronRight size={13} style={{ marginLeft: 'auto' }} />
+                            </div>
+                        ) : (
+                            <div className="sc-promo-bar" onClick={() => setShowVoucherDrawer(true)}>
+                                <Tag size={13} />
+                                <span>Gunakan kode voucher untuk hemat lebih banyak</span>
+                                <ChevronRight size={13} style={{ marginLeft: 'auto' }} />
+                            </div>
+                        )
                     )}
 
                     {/* Body */}
@@ -297,7 +456,7 @@ export default function CartDrawer({
                                                 )}
                                                 <div className="sc-item-bottom">
                                                     <span className="sc-item-price">
-                                                        Rp {(item.product.price * item.quantity).toLocaleString('id-ID')}
+                                                        {formatRupiah(item.product.price * item.quantity)}
                                                     </span>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                         <div className="sc-qty-ctrl">
@@ -338,15 +497,21 @@ export default function CartDrawer({
                             <div className="sc-summary">
                                 <div className="sc-summary-row">
                                     <span>Subtotal ({totalItems} produk)</span>
-                                    <span style={{ color: '#222', fontWeight: 600 }}>Rp {totalPrice.toLocaleString('id-ID')}</span>
+                                    <span style={{ color: '#222', fontWeight: 600 }}>{formatRupiah(totalPrice)}</span>
                                 </div>
                                 <div className="sc-summary-row">
                                     <span>Diskon Voucher</span>
-                                    <span style={{ color: '#c0001a' }}>- Rp 0</span>
+                                    <span style={{ color: '#c0001a' }}>- {formatRupiah(voucherDiscount)}</span>
                                 </div>
+                                {selectedShippingVoucher && (
+                                    <div className="sc-summary-row">
+                                        <span>Gratis Ongkir ({selectedShippingVoucher.code})</span>
+                                        <span style={{ color: '#22c55e' }}>Potongan s.d. {formatRupiah(selectedShippingVoucher.value)}</span>
+                                    </div>
+                                )}
                                 <div className="sc-summary-total">
                                     <span className="sc-total-label">Total Pembayaran</span>
-                                    <span className="sc-total-val">Rp {totalPrice.toLocaleString('id-ID')}</span>
+                                    <span className="sc-total-val">{formatRupiah(Math.max(0, totalPrice - voucherDiscount))}</span>
                                 </div>
                             </div>
 
@@ -355,11 +520,14 @@ export default function CartDrawer({
                                     Beli Sekarang ({totalItems})
                                 </button>
                                 <a
-                                    href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+                                    href={getWhatsAppLink(
+                                        settings,
                                         `Halo ${storeName}, saya ingin memesan:\n` +
                                         cartItems.map(i => `- ${i.product.name} (${i.variant}) x${i.quantity}`).join('\n') +
-                                        `\n\nTotal: Rp ${totalPrice.toLocaleString('id-ID')}`
-                                    )}`}
+                                        (selectedVoucher ? `\n- Diskon Voucher: ${selectedVoucher.code} (-${formatRupiah(voucherDiscount)})` : '') +
+                                        (selectedShippingVoucher ? `\n- Gratis Ongkir: ${selectedShippingVoucher.code} (Potongan s.d. ${formatRupiah(selectedShippingVoucher.value)})` : '') +
+                                        `\n\nTotal: ${formatRupiah(Math.max(0, totalPrice - voucherDiscount))}`
+                                    )}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="sc-wa-btn"
@@ -376,6 +544,111 @@ export default function CartDrawer({
                         </div>
                     )}
                 </div>
+
+                {/* ── Voucher Drawer Sekunder ── */}
+                {showVoucherDrawer && (
+                    <div className="vch-drawer-backdrop" onClick={() => setShowVoucherDrawer(false)}>
+                        <div className="vch-drawer" onClick={(e) => e.stopPropagation()}>
+                            <div className="vch-drawer-header">
+                                <span className="vch-drawer-title">Pilih Voucher Diskon</span>
+                                <button className="sc-close-btn" style={{ background: '#eee', color: '#333' }} onClick={() => setShowVoucherDrawer(false)}>
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="vch-drawer-body">
+                                <div className="vch-promo-input-box">
+                                    <input 
+                                        className="scp-input" 
+                                        placeholder="Masukkan kode voucher"
+                                        value={voucherInputCode}
+                                        onChange={(e) => setVoucherInputCode(e.target.value.toUpperCase())}
+                                    />
+                                    <button 
+                                        className="vch-btn-apply"
+                                        onClick={() => handleApplyVoucher(voucherInputCode)}
+                                        disabled={!voucherInputCode}
+                                    >
+                                        Gunakan
+                                    </button>
+                                </div>
+
+                                {voucherError && (
+                                    <div style={{ color: '#c0001a', fontSize: 11.5, fontWeight: 600, marginBottom: 12 }}>
+                                        ⚠️ {voucherError}
+                                    </div>
+                                )}
+
+                                <div style={{ fontSize: 12, fontWeight: 700, color: '#444', marginBottom: 12 }}>
+                                    Voucher Tersedia
+                                </div>
+
+                                {vouchers.length === 0 ? (
+                                    <div style={{ fontSize: 12, color: '#888', textAlign: 'center', padding: '24px 0' }}>
+                                        Tidak ada voucher yang tersedia saat ini.
+                                    </div>
+                                ) : (
+                                    vouchers.map((vch) => {
+                                        const isDisabled = totalPrice < vch.min_spend;
+                                        const isSelected = vch.type === 'free_shipping'
+                                            ? !!(selectedShippingVoucher && selectedShippingVoucher.id === vch.id)
+                                            : !!(selectedVoucher && selectedVoucher.id === vch.id);
+                                        return (
+                                            <div key={vch.id} className={`vch-card ${isSelected ? 'selected' : ''}`} style={{ opacity: isDisabled ? 0.6 : 1, borderColor: isSelected ? (vch.type === 'free_shipping' ? '#22c55e' : '#c0001a') : '#f0f0f0', background: isSelected ? (vch.type === 'free_shipping' ? '#f0fdf4' : '#fffcfc') : '#fff' }}>
+                                                <div className="vch-info">
+                                                    <span className="vch-code-badge" style={vch.type === 'free_shipping' ? { background: '#f0fdf4', color: '#22c55e', borderColor: '#bbf7d0' } : {}}>{vch.code}</span>
+                                                    <div className="vch-name">
+                                                        {vch.type === 'free_shipping'
+                                                            ? `Gratis Ongkir s.d. ${formatRupiah(vch.value)}`
+                                                            : vch.type === 'percent' 
+                                                                ? `Diskon ${vch.value}%` 
+                                                                : `Potongan ${formatRupiah(vch.value)}`}
+                                                    </div>
+                                                    <div className="vch-desc">
+                                                        {vch.type === 'free_shipping'
+                                                            ? 'Potongan langsung untuk ongkos kirim Biteship'
+                                                            : vch.type === 'percent' && vch.max_discount
+                                                                ? `Maksimal potongan ${formatRupiah(vch.max_discount)}`
+                                                                : 'Diskon langsung tanpa batas maksimal'}
+                                                    </div>
+                                                    <div className="vch-min">
+                                                        Min. Belanja {formatRupiah(vch.min_spend)}
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    className={`vch-select-btn ${isSelected ? 'active' : ''}`}
+                                                    style={isSelected && vch.type === 'free_shipping' ? { background: '#22c55e', borderColor: '#22c55e' } : (vch.type === 'free_shipping' ? { color: '#22c55e', borderColor: '#22c55e' } : {})}
+                                                    disabled={isDisabled}
+                                                    onClick={() => {
+                                                        if (isSelected) {
+                                                            handleRemoveVoucher(vch.type);
+                                                        } else {
+                                                            if (vch.type === 'free_shipping') {
+                                                                setSelectedShippingVoucher(vch);
+                                                                setShippingDiscount(0);
+                                                            } else {
+                                                                setSelectedVoucher(vch);
+                                                                let disc = 0;
+                                                                if (vch.type === 'percent') {
+                                                                    disc = totalPrice * (vch.value / 100);
+                                                                    if (vch.max_discount && disc > vch.max_discount) disc = vch.max_discount;
+                                                                } else {
+                                                                    disc = Math.min(vch.value, totalPrice);
+                                                                }
+                                                                setVoucherDiscount(disc);
+                                                            }
+                                                        }
+                                                    }}
+                                                >
+                                                    {isSelected ? 'Terpakai' : 'Gunakan'}
+                                                </button>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </>
     );

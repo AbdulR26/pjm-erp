@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShieldCheck, ArrowLeft, Mail, Lock, User, Phone } from 'lucide-react';
+import { getCsrfToken } from '../utils/helpers';
 
 // Google Icon SVG
 const GoogleIcon = () => (
@@ -50,7 +51,7 @@ export default function LoginPage({ onBack, reason, onLoginSuccess }) {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 },
                 body: JSON.stringify({ email, password })
             });
@@ -90,7 +91,7 @@ export default function LoginPage({ onBack, reason, onLoginSuccess }) {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 },
                 body: JSON.stringify({ name, email, phone, password })
             });

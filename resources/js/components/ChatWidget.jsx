@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MessageSquare, Send, X, Check, CheckCheck, Loader2 } from 'lucide-react';
+import { getCsrfToken } from '../utils/helpers';
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
@@ -38,7 +39,7 @@ export default function ChatWidget({ currentUser, onOpenLogin }) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 }
             });
             if (res.ok) {
@@ -85,7 +86,7 @@ export default function ChatWidget({ currentUser, onOpenLogin }) {
                     authEndpoint: '/api/chats/auth',
                     auth: {
                         headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                            'X-CSRF-TOKEN': getCsrfToken()
                         }
                     }
                 });
@@ -159,7 +160,7 @@ export default function ChatWidget({ currentUser, onOpenLogin }) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 },
                 body: JSON.stringify({ message: newMessage })
             });

@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, MapPin, Truck, ShieldCheck, Wallet, ChevronRight, Check, X, Copy, QrCode, CreditCard, Tag, Store } from 'lucide-react';
+import { formatRupiah, getCsrfToken, loadMidtransSnap } from '../utils/helpers';
 
-export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser, settings }) {
+export default function CheckoutPage({ 
+    cart, 
+    onBack, 
+    onOrderSuccess, 
+    currentUser, 
+    settings,
+    initialSelectedVoucher = null,
+    initialVoucherDiscount = 0,
+    initialSelectedShippingVoucher = null,
+    initialShippingDiscount = 0,
+    onVoucherChange,
+    onShippingVoucherChange
+}) {
     const [couriers, setCouriers] = useState([]);
     const [selectedCourier, setSelectedCourier]   = useState(null);
     const [loadingRates, setLoadingRates]         = useState(false);
@@ -50,11 +63,25 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
     const [savingAddr, setSavingAddr] = useState(false);
 
     const [vouchers,          setVouchers]          = useState([]);
-    const [selectedVoucher,   setSelectedVoucher]   = useState(null);
-    const [voucherDiscount,   setVoucherDiscount]   = useState(0);
+    const [selectedVoucher,   setSelectedVoucher]   = useState(initialSelectedVoucher);
+    const [voucherDiscount,   setVoucherDiscount]   = useState(initialVoucherDiscount);
+    const [selectedShippingVoucher, setSelectedShippingVoucher] = useState(initialSelectedShippingVoucher);
+    const [shippingDiscount,  setShippingDiscount]  = useState(initialShippingDiscount);
     const [showVoucherDrawer, setShowVoucherDrawer] = useState(false);
     const [voucherInputCode,  setVoucherInputCode]  = useState('');
     const [voucherError,      setVoucherError]      = useState('');
+
+    useEffect(() => {
+        setSelectedVoucher(initialSelectedVoucher);
+        setVoucherDiscount(initialVoucherDiscount);
+    }, [initialSelectedVoucher, initialVoucherDiscount]);
+
+    useEffect(() => {
+        setSelectedShippingVoucher(initialSelectedShippingVoucher);
+        setShippingDiscount(initialShippingDiscount);
+    }, [initialSelectedShippingVoucher, initialShippingDiscount]);
+
+
 
     const fetchAddresses = async () => {
         setAddressesLoading(true);
@@ -241,7 +268,7 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 },
                 body: JSON.stringify(payload)
             });
@@ -270,22 +297,7 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
     };
 
     useEffect(() => {
-        if (!settings) return;
-        const isProduction = settings.midtrans_is_production === '1' || settings.midtrans_is_production === true || settings.midtrans_is_production === 'true';
-        const clientKey = settings.midtrans_client_key || 'SB-Mid-client-SQ4TW_FBC4Xy618R';
-        const snapSrcUrl = isProduction 
-            ? 'https://app.midtrans.com/snap/snap.js' 
-            : 'https://app.sandbox.midtrans.com/snap/snap.js';
-
-        // Check if script is already added
-        let script = document.querySelector(`script[src="${snapSrcUrl}"]`);
-        if (!script) {
-            script = document.createElement('script');
-            script.src = snapSrcUrl;
-            script.setAttribute('data-client-key', clientKey);
-            script.async = true;
-            document.body.appendChild(script);
-        }
+        loadMidtransSnap(settings);
     }, [settings]);
 
     useEffect(() => {
@@ -303,7 +315,17 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
 
     const subtotal      = cart.reduce((t, i) => t + i.product.price * i.quantity, 0);
     const shippingFee   = selectedCourier ? selectedCourier.price : 0;
-    const total         = Math.max(0, subtotal + shippingFee - voucherDiscount);
+    const total         = Math.max(0, subtotal + shippingFee - voucherDiscount - shippingDiscount);
+
+    useEffect(() => {
+        const calculatedShippingDisc = selectedShippingVoucher ? Math.min(selectedShippingVoucher.value, shippingFee) : 0;
+        if (calculatedShippingDisc !== shippingDiscount) {
+            setShippingDiscount(calculatedShippingDisc);
+            if (onShippingVoucherChange) {
+                onShippingVoucherChange(selectedShippingVoucher, calculatedShippingDisc);
+            }
+        }
+    }, [shippingFee, selectedShippingVoucher, shippingDiscount, onShippingVoucherChange]);
 
     const handleSaveAddress = (e) => {
         e.preventDefault();
@@ -314,14 +336,14 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
     const handleApplyVoucher = async (code) => {
         setVoucherError('');
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const csrfToken = getCsrfToken();
             const response = await fetch('/api/vouchers/apply', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrfToken
                 },
-                body: JSON.stringify({ code, subtotal })
+                body: JSON.stringify({ code, subtotal, shipping_cost: shippingFee })
             });
 
             const data = await response.json();
@@ -329,8 +351,16 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                 throw new Error(data.message || 'Gagal menerapkan voucher');
             }
 
-            setSelectedVoucher(data.voucher);
-            setVoucherDiscount(data.discount);
+            if (data.voucher.type === 'free_shipping') {
+                const calculatedShippingDisc = Math.min(data.voucher.value, shippingFee);
+                setSelectedShippingVoucher(data.voucher);
+                setShippingDiscount(calculatedShippingDisc);
+                if (onShippingVoucherChange) onShippingVoucherChange(data.voucher, calculatedShippingDisc);
+            } else {
+                setSelectedVoucher(data.voucher);
+                setVoucherDiscount(data.discount);
+                if (onVoucherChange) onVoucherChange(data.voucher, data.discount);
+            }
             setShowVoucherDrawer(false);
             setVoucherInputCode('');
         } catch (err) {
@@ -339,9 +369,16 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
         }
     };
 
-    const handleRemoveVoucher = () => {
-        setSelectedVoucher(null);
-        setVoucherDiscount(0);
+    const handleRemoveVoucher = (type) => {
+        if (type === 'free_shipping') {
+            setSelectedShippingVoucher(null);
+            setShippingDiscount(0);
+            if (onShippingVoucherChange) onShippingVoucherChange(null, 0);
+        } else {
+            setSelectedVoucher(null);
+            setVoucherDiscount(0);
+            if (onVoucherChange) onVoucherChange(null, 0);
+        }
     };
 
     const fetchRates = async (addr) => {
@@ -349,7 +386,7 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
         setLoadingRates(true);
         setRatesError('');
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const csrfToken = getCsrfToken();
             const items = cart.map(item => ({
                 product_id: item.product.id,
                 variant_name: item.variant,
@@ -413,12 +450,21 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
     const handlePlaceOrder = async () => {
         setLoading(true);
         try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            const csrfToken = getCsrfToken();
             const items = cart.map(item => ({
                 product_id: item.product.id,
                 variant_name: item.variant,
                 quantity: item.quantity
             }));
+
+            let combinedVoucherCode = null;
+            if (selectedVoucher && selectedShippingVoucher) {
+                combinedVoucherCode = `${selectedVoucher.code}+${selectedShippingVoucher.code}`;
+            } else if (selectedVoucher) {
+                combinedVoucherCode = selectedVoucher.code;
+            } else if (selectedShippingVoucher) {
+                combinedVoucherCode = selectedShippingVoucher.code;
+            }
 
             const response = await fetch('/api/orders', {
                 method: 'POST',
@@ -431,7 +477,7 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                     items,
                     courier: selectedCourier,
                     notes: '',
-                    voucher_code: selectedVoucher ? selectedVoucher.code : null
+                    voucher_code: combinedVoucherCode
                 })
             });
 
@@ -450,8 +496,8 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                             subtotal, shipping: shippingFee, total,
                             paymentMethod: 'Midtrans VA/QRIS',
                             order_number: data.order.order_number,
-                            discount: voucherDiscount,
-                            voucher_code: selectedVoucher ? selectedVoucher.code : null
+                            discount: voucherDiscount + shippingDiscount,
+                            voucher_code: combinedVoucherCode
                         });
                     },
                     onPending: function (result) {
@@ -461,8 +507,8 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                             subtotal, shipping: shippingFee, total,
                             paymentMethod: 'Midtrans VA/QRIS',
                             order_number: data.order.order_number,
-                            discount: voucherDiscount,
-                            voucher_code: selectedVoucher ? selectedVoucher.code : null
+                            discount: voucherDiscount + shippingDiscount,
+                            voucher_code: combinedVoucherCode
                         });
                     },
                     onError: function (result) {
@@ -477,8 +523,8 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                             subtotal, shipping: shippingFee, total,
                             paymentMethod: 'Midtrans VA/QRIS',
                             order_number: data.order.order_number,
-                            discount: voucherDiscount,
-                            voucher_code: selectedVoucher ? selectedVoucher.code : null
+                            discount: voucherDiscount + shippingDiscount,
+                            voucher_code: combinedVoucherCode
                         });
                     }
                 });
@@ -489,8 +535,8 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                     subtotal, shipping: shippingFee, total,
                     paymentMethod: 'Midtrans VA/QRIS',
                     order_number: data.order.order_number,
-                    discount: voucherDiscount,
-                    voucher_code: selectedVoucher ? selectedVoucher.code : null
+                    discount: voucherDiscount + shippingDiscount,
+                    voucher_code: combinedVoucherCode
                 });
             } else {
                 alert('Gagal memuat metode pembayaran Midtrans.');
@@ -878,6 +924,17 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                 .vch-select-btn:disabled {
                     border-color: #ddd; color: #aaa; cursor: not-allowed;
                 }
+                .scp-layout {
+                    display: grid;
+                    grid-template-columns: 1fr;
+                    gap: 12px;
+                }
+                @media (min-width: 1024px) {
+                    .scp-layout {
+                        grid-template-columns: 2.2fr 1fr;
+                        gap: 16px;
+                    }
+                }
             `}</style>
 
             <div className="scp scp-wrap scp-page">
@@ -900,9 +957,9 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 0, alignItems: 'start' }}>
+                <div className="scp-layout">
                     {/* LEFT: Details */}
-                    <div style={{ gridColumn: 'span 2' }}>
+                    <div>
 
                         {/* 1. Address */}
                         <div className="scp-card">
@@ -980,7 +1037,7 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                                             <div className="scp-prod-qty">x{item.quantity}</div>
                                         </div>
                                         <div className="scp-prod-price">
-                                            Rp {(item.product.price * item.quantity).toLocaleString('id-ID')}
+                                            {formatRupiah(item.product.price * item.quantity)}
                                         </div>
                                     </div>
                                 ))}
@@ -1027,7 +1084,7 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                                                 <div className="scp-courier-service">{cour.service}</div>
                                                 <span className="scp-courier-eta">Estimasi {cour.eta}</span>
                                             </div>
-                                            <div className="scp-courier-price">Rp {cour.price.toLocaleString('id-ID')}</div>
+                                            <div className="scp-courier-price">{formatRupiah(cour.price)}</div>
                                         </button>
                                     ))
                                 )}
@@ -1072,24 +1129,30 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                     </div>
 
                     {/* RIGHT: Summary (shown inline on mobile, right col on desktop) */}
-                    <div style={{ gridColumn: 'span 1' }}>
+                    <div>
                         <div className="scp-summary-card" style={{ marginBottom: 8 }}>
                             <div style={{ fontSize: 13, fontWeight: 700, color: '#222', marginBottom: 12 }}>Ringkasan Belanja</div>
                             <div className="scp-sum-row">
                                 <span>Subtotal Produk</span>
-                                <span style={{ color: '#222', fontWeight: 600 }}>Rp {subtotal.toLocaleString('id-ID')}</span>
+                                <span style={{ color: '#222', fontWeight: 600 }}>{formatRupiah(subtotal)}</span>
                             </div>
                             <div className="scp-sum-row">
                                 <span>Biaya Pengiriman</span>
-                                <span style={{ color: '#222', fontWeight: 600 }}>Rp {shippingFee.toLocaleString('id-ID')}</span>
+                                <span style={{ color: '#222', fontWeight: 600 }}>{formatRupiah(shippingFee)}</span>
                             </div>
                              <div className="scp-sum-row" style={{ marginBottom: 0 }}>
                                  <span>Diskon Voucher</span>
-                                 <span style={{ color: '#c0001a', fontWeight: 600 }}>- Rp {voucherDiscount.toLocaleString('id-ID')}</span>
+                                 <span style={{ color: '#c0001a', fontWeight: 600 }}>- {formatRupiah(voucherDiscount)}</span>
                              </div>
+                             {selectedShippingVoucher ? (
+                                 <div className="scp-sum-row" style={{ marginBottom: 0, marginTop: 6 }}>
+                                     <span>Diskon Ongkir ({selectedShippingVoucher.code})</span>
+                                     <span style={{ color: '#22c55e', fontWeight: 600 }}>- {formatRupiah(shippingDiscount)}</span>
+                                 </div>
+                             ) : null}
                             <div className="scp-sum-total">
                                 <span className="scp-sum-total-label">Total Pembayaran</span>
-                                <span className="scp-sum-total-val">Rp {total.toLocaleString('id-ID')}</span>
+                                <span className="scp-sum-total-val">{formatRupiah(total)}</span>
                             </div>
                         </div>
 
@@ -1103,35 +1166,58 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                                 gap: 8, 
                                 cursor: 'pointer', 
                                 marginBottom: 8,
-                                borderLeft: selectedVoucher ? '3px solid #c0001a' : ''
+                                borderLeft: (selectedVoucher || selectedShippingVoucher) ? '3px solid #c0001a' : ''
                             }}
                             onClick={() => setShowVoucherDrawer(true)}
                         >
                             <Tag size={15} color="#c0001a" />
                             <div style={{ flex: 1 }}>
-                                {selectedVoucher ? (
-                                    <>
-                                        <span style={{ fontSize: 13, fontWeight: 700, color: '#c0001a' }}>
-                                            Voucher Digunakan: {selectedVoucher.code}
-                                        </span>
-                                        <div style={{ fontSize: 11, color: '#2e7d4a', fontWeight: 600, marginTop: 2 }}>
-                                            Hemat Rp {voucherDiscount.toLocaleString('id-ID')}
-                                        </div>
-                                    </>
+                                {(selectedVoucher || selectedShippingVoucher) ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                        {selectedVoucher && (
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                <div>
+                                                    <span style={{ fontSize: 13, fontWeight: 700, color: '#c0001a' }}>
+                                                        Voucher Belanja: {selectedVoucher.code}
+                                                    </span>
+                                                    <div style={{ fontSize: 11, color: '#2e7d4a', fontWeight: 600 }}>
+                                                        Hemat {formatRupiah(voucherDiscount)}
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); handleRemoveVoucher('discount'); }}
+                                                    style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11, fontWeight: 600, padding: '2px 6px' }}
+                                                >
+                                                    Batal
+                                                </button>
+                                            </div>
+                                        )}
+                                        {selectedShippingVoucher && (
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: selectedVoucher ? '1px dashed #eee' : 'none', paddingTop: selectedVoucher ? '4px' : '0' }}>
+                                                <div>
+                                                    <span style={{ fontSize: 13, fontWeight: 700, color: '#22c55e' }}>
+                                                        Voucher Ongkir: {selectedShippingVoucher.code}
+                                                    </span>
+                                                    <div style={{ fontSize: 11, color: '#2e7d4a', fontWeight: 600 }}>
+                                                        Potongan {formatRupiah(shippingDiscount)}
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={(e) => { e.stopPropagation(); handleRemoveVoucher('free_shipping'); }}
+                                                    style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 11, fontWeight: 600, padding: '2px 6px' }}
+                                                >
+                                                    Batal
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 ) : (
                                     <span style={{ fontSize: 12.5, color: '#555', fontWeight: 600 }}>
                                         Gunakan Voucher / Promo
                                     </span>
                                 )}
                             </div>
-                            {selectedVoucher ? (
-                                <button 
-                                    onClick={(e) => { e.stopPropagation(); handleRemoveVoucher(); }}
-                                    style={{ background: 'none', border: 'none', color: '#888', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
-                                >
-                                    Batal
-                                </button>
-                            ) : (
+                            {!(selectedVoucher || selectedShippingVoucher) && (
                                 <ChevronRight size={13} color="#bbb" style={{ marginLeft: 'auto' }} />
                             )}
                         </div>
@@ -1152,7 +1238,7 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                 <div className="scp-card scp-sticky-bar">
                     <div className="scp-sticky-total">
                         <div className="scp-sticky-label">Total Pembayaran</div>
-                        <div className="scp-sticky-val">Rp {total.toLocaleString('id-ID')}</div>
+                        <div className="scp-sticky-val">{formatRupiah(total)}</div>
                     </div>
                     <button
                         className="scp-order-btn"
@@ -1211,47 +1297,60 @@ export default function CheckoutPage({ cart, onBack, onOrderSuccess, currentUser
                             ) : (
                                 vouchers.map((vch) => {
                                     const isDisabled = subtotal < vch.min_spend;
-                                    const isSelected = selectedVoucher && selectedVoucher.id === vch.id;
+                                    const isSelected = vch.type === 'free_shipping'
+                                        ? !!(selectedShippingVoucher && selectedShippingVoucher.id === vch.id)
+                                        : !!(selectedVoucher && selectedVoucher.id === vch.id);
                                     return (
-                                        <div key={vch.id} className={`vch-card ${isSelected ? 'selected' : ''}`} style={{ opacity: isDisabled ? 0.6 : 1 }}>
+                                        <div key={vch.id} className={`vch-card ${isSelected ? 'selected' : ''}`} style={{ opacity: isDisabled ? 0.6 : 1, borderColor: isSelected ? (vch.type === 'free_shipping' ? '#22c55e' : '#c0001a') : '#f0f0f0', background: isSelected ? (vch.type === 'free_shipping' ? '#f0fdf4' : '#fffcfc') : '#fff' }}>
                                             <div className="vch-info">
-                                                <span className="vch-code-badge">{vch.code}</span>
+                                                <span className="vch-code-badge" style={vch.type === 'free_shipping' ? { background: '#f0fdf4', color: '#22c55e', borderColor: '#bbf7d0' } : {}}>{vch.code}</span>
                                                 <div className="vch-name">
-                                                    {vch.type === 'percent' 
-                                                        ? `Diskon ${vch.value}%` 
-                                                        : `Potongan Rp ${vch.value.toLocaleString('id-ID')}`}
+                                                    {vch.type === 'free_shipping'
+                                                        ? `Gratis Ongkir s.d. ${formatRupiah(vch.value)}`
+                                                        : vch.type === 'percent' 
+                                                            ? `Diskon ${vch.value}%` 
+                                                            : `Potongan ${formatRupiah(vch.value)}`}
                                                 </div>
                                                 <div className="vch-desc">
-                                                    {vch.type === 'percent' && vch.max_discount
-                                                        ? `Maksimal potongan Rp ${vch.max_discount.toLocaleString('id-ID')}`
-                                                        : 'Diskon langsung tanpa batas maksimal'}
+                                                    {vch.type === 'free_shipping'
+                                                        ? 'Potongan langsung untuk ongkos kirim Biteship'
+                                                        : vch.type === 'percent' && vch.max_discount
+                                                            ? `Maksimal potongan ${formatRupiah(vch.max_discount)}`
+                                                            : 'Diskon langsung tanpa batas maksimal'}
                                                 </div>
                                                 <div className="vch-min">
-                                                    Min. Belanja Rp {vch.min_spend.toLocaleString('id-ID')}
+                                                    Min. Belanja {formatRupiah(vch.min_spend)}
                                                 </div>
                                             </div>
                                             <button 
                                                 className={`vch-select-btn ${isSelected ? 'active' : ''}`}
+                                                style={isSelected && vch.type === 'free_shipping' ? { background: '#22c55e', borderColor: '#22c55e' } : (vch.type === 'free_shipping' ? { color: '#22c55e', borderColor: '#22c55e' } : {})}
                                                 disabled={isDisabled}
                                                 onClick={() => {
                                                     if (isSelected) {
-                                                        handleRemoveVoucher();
+                                                        handleRemoveVoucher(vch.type);
                                                     } else {
-                                                        setSelectedVoucher(vch);
-                                                        // calculate discount on the fly
-                                                        let disc = 0;
-                                                        if (vch.type === 'percent') {
-                                                            disc = subtotal * (vch.value / 100);
-                                                            if (vch.max_discount && disc > vch.max_discount) disc = vch.max_discount;
+                                                        if (vch.type === 'free_shipping') {
+                                                            const calculatedShippingDisc = Math.min(vch.value, shippingFee);
+                                                            setSelectedShippingVoucher(vch);
+                                                            setShippingDiscount(calculatedShippingDisc);
+                                                            if (onShippingVoucherChange) onShippingVoucherChange(vch, calculatedShippingDisc);
                                                         } else {
-                                                            disc = Math.min(vch.value, subtotal);
+                                                            setSelectedVoucher(vch);
+                                                            let disc = 0;
+                                                            if (vch.type === 'percent') {
+                                                                disc = subtotal * (vch.value / 100);
+                                                                if (vch.max_discount && disc > vch.max_discount) disc = vch.max_discount;
+                                                            } else {
+                                                                disc = Math.min(vch.value, subtotal);
+                                                            }
+                                                            setVoucherDiscount(disc);
+                                                            if (onVoucherChange) onVoucherChange(vch, disc);
                                                         }
-                                                        setVoucherDiscount(disc);
-                                                        setShowVoucherDrawer(false);
                                                     }
                                                 }}
                                             >
-                                                {isSelected ? 'Terpakai' : 'Klaim'}
+                                                {isSelected ? 'Terpakai' : 'Gunakan'}
                                             </button>
                                         </div>
                                     );

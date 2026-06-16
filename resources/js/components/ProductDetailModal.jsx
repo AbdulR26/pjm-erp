@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { X, Star, ShoppingCart, ShieldCheck, Heart, Share2, Plus, Minus } from 'lucide-react';
+import { formatRupiah, getStoreName, getWhatsAppLink } from '../utils/helpers';
 
 export default function ProductDetailModal({ product, onClose, onAddToCart, settings = {} }) {
-    const whatsappNumber = settings.store_whatsapp || '6281234567890';
-    const storeName = settings.store_name || 'Putri Jaya Mobil';
+    const storeName = getStoreName(settings);
     const [selectedVariant, setSelectedVariant] = useState(product.variants[0] || '');
     const [quantity, setQuantity] = useState(1);
     const [isWishlist, setIsWishlist] = useState(false);
@@ -89,7 +89,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, sett
                         <div className="bg-linear-to-r from-red-50 to-red-50/10 rounded-xl p-4 mb-5 border border-red-100/50 flex flex-col justify-center">
                             <div className="flex items-baseline space-x-2.5">
                                 <span className="text-xl md:text-2xl font-black text-red-600">
-                                    Rp {(product.price).toLocaleString('id-ID')}
+                                    {formatRupiah(product.price)}
                                 </span>
                                 {product.discount > 0 && (
                                     <span className="text-xs text-rose-500 font-bold bg-rose-50 px-1.5 py-0.5 rounded">
@@ -99,7 +99,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, sett
                             </div>
                             {product.discount > 0 && (
                                 <span className="text-xs text-slate-400 line-through mt-0.5">
-                                    MSRP: Rp {(product.originalPrice).toLocaleString('id-ID')}
+                                    MSRP: {formatRupiah(product.originalPrice)}
                                 </span>
                             )}
                         </div>
@@ -185,9 +185,10 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, sett
                         </button>
                         
                         <a
-                            href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
+                            href={getWhatsAppLink(
+                                settings,
                                 `Halo ${storeName}, saya tertarik membeli ${product.name} (Varian: ${selectedVariant}, Jumlah: ${quantity}). Bagaimana proses selanjutnya?`
-                            )}`}
+                            )}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-5 rounded-xl transition duration-300 flex items-center justify-center space-x-2 shadow-lg hover:shadow-emerald-500/20"

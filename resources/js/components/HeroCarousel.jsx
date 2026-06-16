@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { getWhatsAppLink, getStoreName } from '../utils/helpers';
 
 export default function HeroCarousel() {
     const [banners, setBanners] = useState([]);
@@ -44,10 +45,10 @@ export default function HeroCarousel() {
         setActiveIndex((prev) => (prev - 1 + banners.length) % banners.length);
     };
 
-    const whatsappNumber = settings.store_whatsapp || '6281234567890';
-    const defaultWaLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
-        `Halo ${settings.store_name || 'Putri Jaya Mobil'}, saya ingin konsultasi mengenai spesifikasi suku cadang mobil saya.`
-    )}`;
+    const defaultWaLink = getWhatsAppLink(
+        settings,
+        `Halo ${getStoreName(settings)}, saya ingin konsultasi mengenai spesifikasi suku cadang mobil saya.`
+    );
 
     const side1 = {
         badge: settings.side_banner_1_badge || 'KONSULTASI GRATIS',

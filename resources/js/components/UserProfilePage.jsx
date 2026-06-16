@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, MapPin, ClipboardList, CreditCard, Truck, AlertCircle, CheckCircle, ArrowLeft, Phone, Mail, ChevronRight, ShoppingBag, Copy, Check, Calendar, Star, Award, ShieldCheck, Map, Pencil, Trash2, Home, Briefcase, Plus, Loader, Info, ExternalLink } from 'lucide-react';
-
-/**
- * Resolve image URL for an order item's product.
- * Handles absolute URLs (Unsplash), relative storage paths, and fallback.
- */
-function getProductImageUrl(item) {
-    const img = item.product_variant?.product?.main_image || item.productVariant?.product?.main_image;
-    if (!img) return '/images/default-product.png';
-    if (img.startsWith('http://') || img.startsWith('https://')) return img;
-    if (img.startsWith('/')) return img;
-    return `/storage/${img}`;
-}
+import { formatRupiah, getCsrfToken, getStoreName, getWhatsAppLink, loadMidtransSnap, getProductImageUrl } from '../utils/helpers';
 
 export default function UserProfilePage({ currentUser, onUpdateUser, onBack, settings, initialTab = 'profile', onTabChange }) {
     const [activeTab, setActiveTab] = useState(initialTab); // 'profile' | 'address' | 'orders'
@@ -36,22 +25,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
     }, [activeTab]);
     
     useEffect(() => {
-        if (!settings) return;
-        const isProduction = settings.midtrans_is_production === '1' || settings.midtrans_is_production === true || settings.midtrans_is_production === 'true';
-        const clientKey = settings.midtrans_client_key || 'SB-Mid-client-SQ4TW_FBC4Xy618R';
-        const snapSrcUrl = isProduction 
-            ? 'https://app.midtrans.com/snap/snap.js' 
-            : 'https://app.sandbox.midtrans.com/snap/snap.js';
-
-        // Check if script is already added
-        let script = document.querySelector(`script[src="${snapSrcUrl}"]`);
-        if (!script) {
-            script = document.createElement('script');
-            script.src = snapSrcUrl;
-            script.setAttribute('data-client-key', clientKey);
-            script.async = true;
-            document.body.appendChild(script);
-        }
+        loadMidtransSnap(settings);
     }, [settings]);
     // Profile Form State
     const [name, setName] = useState(currentUser?.name || '');
@@ -303,7 +277,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 },
                 body: JSON.stringify(payload)
             });
@@ -337,7 +311,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 }
             });
             if (res.ok) {
@@ -365,7 +339,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 }
             });
             if (res.ok) {
@@ -437,7 +411,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 },
                 body: JSON.stringify({ name, phone, address, postal_code: postalCode, latitude, longitude })
             });
@@ -471,7 +445,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 }
             });
             const data = await res.json();
@@ -519,7 +493,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 }
             });
             const data = await res.json();
@@ -546,7 +520,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 }
             });
             const data = await res.json();
@@ -621,7 +595,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
                 method: 'POST',
                 headers: {
                     'Accept': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                    'X-CSRF-TOKEN': getCsrfToken()
                 },
                 body: formData
             });
@@ -656,7 +630,7 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
         return orders.filter(o => o.status === orderFilter);
     };
 
-    const fmt = (num) => 'Rp ' + Number(num).toLocaleString('id-ID');
+    const fmt = formatRupiah;
 
     const getItemProductReview = (item) => {
         if (!selectedOrder || !selectedOrder.reviews) return null;
@@ -1460,11 +1434,11 @@ export default function UserProfilePage({ currentUser, onUpdateUser, onBack, set
                                                         <div className="px-6 py-4.5 border-b border-slate-100 flex justify-between items-center flex-wrap gap-3">
                                                             <div className="flex items-center gap-2.5 font-bold text-slate-800 text-sm">
                                                                 <span className="bg-[#ff5722] text-white text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-sm">MALL</span>
-                                                                <span>Putri Jaya Mobil</span>
+                                                                <span>{getStoreName(settings)}</span>
                                                                 <button 
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        window.open(`https://wa.me/${settings?.store_whatsapp || '6281234567890'}`, '_blank');
+                                                                        window.open(getWhatsAppLink(settings), '_blank');
                                                                     }}
                                                                     className="flex items-center gap-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-600 text-[11px] font-bold px-2.5 py-1 rounded-lg transition cursor-pointer ml-2.5 shadow-2xs hover:shadow-xs"
                                                                 >
