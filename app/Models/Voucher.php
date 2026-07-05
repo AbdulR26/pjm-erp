@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Scaffolding\Traits\ScaffoldingModel;
 
 class Voucher extends Model
 {
     use HasFactory;
+    use ScaffoldingModel {
+        initializeScaffoldingModel as parentInitialize;
+    }
 
     protected $fillable = [
         'code',
@@ -32,6 +36,47 @@ class Voucher extends Model
         'end_date' => 'datetime',
         'is_active' => 'boolean',
     ];
+
+    /**
+     * Customize scaffolding properties after table parsing.
+     */
+    public function initializeScaffoldingModel()
+    {
+        $this->parentInitialize();
+        
+        // Convert "type" text input to select dropdown
+        $this->fieldSet('type', [
+            'type' => 'select',
+            'options' => [
+                'fixed' => 'Potongan Tetap (Rp)',
+                'percent' => 'Persentase (%)'
+            ],
+            'required' => true,
+        ]);
+        
+        // Convert "is_active" check
+        $this->fieldSet('is_active', [
+            'type' => 'checkbox',
+            'label' => 'Aktifkan Voucher',
+        ]);
+
+        // Configure Flatpickr datetime-pickers
+        $this->fieldSet('start_date', [
+            'type' => 'text',
+            'attributes' => ['class' => 'form-control datetime-picker'],
+        ]);
+
+        $this->fieldSet('end_date', [
+            'type' => 'text',
+            'attributes' => ['class' => 'form-control datetime-picker'],
+        ]);
+
+        // Disable direct input edits for "used" count in creation/edit forms
+        $this->fieldSet('used', [
+            'type' => 'number',
+            'attributes' => ['class' => 'form-control', 'readonly' => 'readonly'],
+        ]);
+    }
 
     /**
      * Check if the voucher is valid for a given subtotal.

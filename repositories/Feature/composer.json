@@ -1,0 +1,43 @@
+{
+  "name": "grasm/laravel-scaffolding",
+  "version": "1.0.0",
+  "description": "Laravel scaffolding for processing data CRUD",
+  "keywords": [
+    "laravel",
+    "scaffolding",
+    "crud"
+  ],
+  "license": "MIT",
+  "homepage": "https://grasm.com/",
+  "support": {
+    "issues": "https://github.com/grasm/scaffolding/issues",
+    "source": "https://github.com/grasm/scaffolding"
+  },
+  "authors": [
+    {
+      "name": "Agus Saiful M",
+      "email": "agusgrasm@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^7.1.3",
+    "yajra/laravel-datatables-oracle": "^9.11"
+  },
+  "autoload": {
+    "psr-4": {
+      "Scaffolding\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Scaffolding\\ScaffoldingServiceProvider"
+      ]
+    }
+  },
+  "config": {
+    "sort-packages": true
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}

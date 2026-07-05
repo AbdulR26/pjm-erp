@@ -1,0 +1,442 @@
+/*================================================================================
+	Item Name: Vuexy - Vuejs, HTML & Laravel Admin Dashboard Template
+	Version: 2.0
+	Author: PIXINVENT
+	Author URL: http://www.themeforest.net/user/pixinvent
+================================================================================
+
+NOTE:
+------
+PLACE HERE YOUR OWN SCSS CODES AND IF NEEDED, OVERRIDE THE STYLES FROM THE OTHER STYLESHEETS.
+WE WILL RELEASE FUTURE UPDATES SO IN ORDER TO NOT OVERWRITE YOUR STYLES IT'S BETTER LIKE THIS.  */
+
+.btn-smartgarden {
+    background: linear-gradient(90deg, #90D44D, #008037);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    font-size: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s ease;
+  }
+
+  .btn-smartgarden:hover {
+    background: linear-gradient(90deg, #007BFF, #4A90E2);
+  }
+
+  .main-menu.menu-light .navigation > li.active > a {
+    background: -webkit-linear-gradient(332deg, #4A90E2, #007BFF);
+    background: linear-gradient(118deg, #4A90E2, #007BFF);
+    box-shadow: 0 0 10px 1px #4A90E2;
+    color: #FFFFFF;
+    font-weight: 400;
+    border-radius: 4px;
+  }
+
+  .main-menu .navbar-header .navbar-brand .brand-text {
+    color: #4A90E2;
+    padding-left: 1rem;
+    margin-bottom: 0;
+    font-weight: 600;
+    letter-spacing: 0.01rem;
+    font-size: 1.45rem;
+    -webkit-animation: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) 0s normal forwards 1 fadein;
+            animation: 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) 0s normal forwards 1 fadein;
+  }
+
+  a {
+    color : #4A90E2;
+    text-decoration : none;
+    background-color : transparent;
+  }
+
+  .btn-gd-success {
+     background: linear-gradient(90deg, #4A90E2, #007BFF);
+    color: white;
+    border: none;
+  }
+
+.btn-gd-green {
+    background: linear-gradient(90deg, #90D44D, #008037);
+    color: white;
+    border: none;
+}
+/* GRADIENT BUTTONS */
+
+.btn-gd-warning {
+    background: linear-gradient(90deg, #FFA726, #FB8C00); /* Oranye terang ke gelap */
+    color: white;
+    border: none;
+  }
+
+  .btn-gd-danger {
+    background: linear-gradient(90deg, #FF6B6B, #C0392B); /* Merah ke merah gelap */
+    color: white;
+    border: none;
+  }
+
+  .btn-gd-primary {
+    background: linear-gradient(90deg, #4A90E2, #007BFF); /* Biru cerah ke biru klasik */
+    color: white;
+    border: none;
+  }
+
+  .btn-gd-info {
+    background: linear-gradient(90deg, #00cfe8, #39c2f5); /* Biru muda ke biru terang */
+    color: white;
+    border: none;
+  }
+
+  .btn-gd-dark {
+    background: linear-gradient(90deg, #555555, #222222); /* Abu ke hitam */
+    color: white;
+    border: none;
+  }
+
+  /* COMMON BUTTON STYLE */
+  .btn-gd-warning,
+  .btn-gd-danger,
+  .btn-gd-green,
+  .btn-gd-primary,
+  .btn-gd-info,
+  .btn-gd-dark {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    display: inline-block;
+    text-decoration: none;
+  }
+
+  /* HOVER EFFECT */
+  .btn-gd-warning:hover,
+  .btn-gd-danger:hover,
+  .btn-gd-primary:hover,
+  .btn-gd-info:hover,
+  .btn-gd-green:hover,
+  .btn-gd-dark:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
+.page-item.active .page-link {
+    z-index: 3;
+    border-radius: 5rem;
+    background-color: #007BFF;
+    color: #FFFFFF !important;
+    font-weight: 600;
+}
+input.form-control:focus,
+select.form-control:focus,
+textarea.form-control:focus {
+    border-color: #2878a7 !important; /* warna hijau Bootstrap (success) */
+    box-shadow: 0 0 0 0.2rem rgba(40, 91, 167, 0.25); /* bayangan hijau */
+}
+
+.table-green th {
+    background: #4A90E2 !important;
+    color: #fff;
+    border: none !important;
+    border-bottom: 5px solid #007BFF !important;
+    text-align: center;
+    border-radius: 0;
+}
+
+
+body { background: #f8fafc; }
+
+/* Premium Scheduling Board Styling */
+
+.hari-column {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.02);
+    border: 1px solid #e2e8f0;
+    transition: all 0.3s ease;
+}
+
+.hari-column:hover {
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
+}
+
+.hari-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1.5px solid #f1f5f9;
+    padding-bottom: 12px;
+}
+
+.hari-title h6 {
+    font-size: 14px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.hari-title span {
+    font-size: 11px;
+    font-weight: 750;
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.08);
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.jam-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 10px 0;
+}
+
+.jam-row:last-child {
+    border-bottom: none;
+}
+
+.jam-label {
+    width: 95px;
+    font-weight: 700;
+    font-size: 12px;
+    color: #475569;
+    font-family: 'Inter', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.jam-label button {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 16px;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.jam-label button:hover {
+    color: #ef4444;
+    transform: scale(1.2);
+}
+
+.jam-slot {
+    flex: 1;
+    border: 1.5px dashed #cbd5e1;
+    border-radius: 12px;
+    padding: 0;
+    min-height: 54px;
+    background: #f8fafc;
+    margin-left: 12px;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.jam-slot:hover {
+    border-color: #3b82f6;
+    background: #f1f5f9;
+}
+
+/* Pulsing dropzone animation during dragging */
+@keyframes slotPulse {
+    0% { border-color: #cbd5e1; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+    50% { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15); background: rgba(59, 130, 246, 0.02); }
+    100% { border-color: #cbd5e1; box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.jam-slot.drag-active {
+    animation: slotPulse 1.8s infinite ease-in-out;
+    border-style: dashed !important;
+}
+
+/* Card elastical bounce animation when dropped/added */
+@keyframes cardPop {
+    0% { transform: scale(0.9) translateY(4px); opacity: 0; }
+    70% { transform: scale(1.02) translateY(-1px); opacity: 0.95; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.jadwal-card {
+    border-radius: 10px;
+    color: #1e293b;
+    padding: 10px 14px;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    font-size: 12.5px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.jadwal-card.slot-mapel {
+    animation: cardPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    border-left-width: 4px !important;
+}
+
+.jadwal-card.slot-mapel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.jadwal-card span {
+    flex: 1;
+    text-align: left;
+    padding-left: 0;
+    line-height: 1.4;
+}
+
+.jadwal-card span strong {
+    font-weight: 800;
+}
+
+.btn-hapus-mapel {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #64748b !important;
+    border-radius: 50% !important;
+    width: 22px !important;
+    height: 22px !important;
+    line-height: 20px !important;
+    text-align: center !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s ease !important;
+    margin-left: 8px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.btn-hapus-mapel:hover {
+    background: #ef4444 !important;
+    border-color: #ef4444 !important;
+    color: #ffffff !important;
+    transform: scale(1.15) rotate(90deg);
+}
+
+.tambah-slot {
+    text-align: center;
+    margin-top: 15px;
+}
+
+.tambah-slot button {
+    border: 1.5px dashed #cbd5e1;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 10px;
+    width: 100%;
+    color: #475569;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tambah-slot button:hover {
+    background: rgba(37, 99, 235, 0.04);
+    border-color: #3b82f6;
+    color: #2563eb;
+}
+
+.jadwal-card.istirahat {
+    background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px) !important;
+    color: #475569 !important;
+    border: 1.5px solid #cbd5e1 !important;
+    font-weight: 800;
+    text-align: center;
+    cursor: not-allowed;
+    pointer-events: none;
+    height: 52px;
+    box-shadow: none;
+}
+
+.jadwal-card.kegiatan {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+    color: #ffffff !important;
+    font-weight: 800;
+    text-align: center;
+    cursor: not-allowed;
+    pointer-events: none;
+    height: 52px;
+}
+
+/* Mapel Items List Left panel */
+
+.mapel-item {
+    padding: 12px 14px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    cursor: grab;
+    font-size: 13px;
+    font-weight: 650;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.01), 0 2px 4px -1px rgba(0,0,0,0.01);
+}
+
+.mapel-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.06);
+}
+
+.mapel-item.unused {
+    background: #ffffff !important;
+    color: #1e293b !important;
+    border: 1.5px solid #e2e8f0 !important;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.02) !important;
+}
+
+.mapel-item.used {
+    background: #f1f5f9 !important;
+    color: #94a3b8 !important;
+    border: 1.5px solid #e2e8f0 !important;
+    border-left: 4px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    opacity: 0.7 !important;
+    cursor: not-allowed !important;
+}
+
+/* SortableJS drag custom state styling */
+.sortable-ghost {
+    opacity: 0.35 !important;
+    transform: scale(0.96) !important;
+    border: 2px dashed #3b82f6 !important;
+    background: rgba(59, 130, 246, 0.05) !important;
+    box-shadow: none !important;
+}
+
+.sortable-chosen {
+    box-shadow: 0 12px 24px rgba(0,0,0,0.1) !important;
+    transform: scale(1.02) rotate(1deg) !important;
+    cursor: grabbing !important;
+}
+
+.jam-slot.conflict {
+    border: 2px solid #ef4444 !important;
+    background: repeating-linear-gradient(45deg, #fee2e2, #fee2e2 10px, #fecaca 10px, #fecaca 20px) !important;
+}
+
+.conflict-focus {
+    animation: pulse 1s ease-in-out 2;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    100% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+}
+

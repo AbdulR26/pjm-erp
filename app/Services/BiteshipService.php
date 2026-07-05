@@ -105,7 +105,7 @@ class BiteshipService
             throw new \Exception('Biteship API Key is not configured.');
         }
 
-        $order->load(['customer', 'items.productVariant.product', 'shipment']);
+        $order->load(['customer', 'items.product', 'shipment']);
         $customer = $order->customer;
 
         // Origin details (defaults to config origin if shipperDetails doesn't supply)
@@ -122,29 +122,13 @@ class BiteshipService
         $destinationLng = $shipperDetails['destination_longitude'] ?? ($order->shipment?->destination_longitude ?? 0);
         $destinationPostalCode = $shipperDetails['destination_postal_code'] ?? ($order->shipment?->destination_postal_code ?? 0);
 
-        // Parse items to determine weights (checking dynamic attributes first, fallback to 1000g)
+        // Parse items directly from OrderItem snapshot fields (no productVariant relationship needed)
         $items = $order->items->map(function ($item) {
-            $product = $item->productVariant->product;
-            
-            // Try to resolve weight from dynamic JSON product attributes
-            $weight = 1000; // default 1kg
-            if ($product && is_array($product->attributes)) {
-                if (isset($product->attributes['weight'])) {
-                    $weight = (int) $product->attributes['weight'];
-                } elseif (isset($product->attributes['berat'])) {
-                    $weight = (int) $product->attributes['berat'];
-                }
-            }
-
-            $productName = $product ? $product->name : 'Produk';
-            $variantName = $item->productVariant->name;
-            $fullName = $productName . ($variantName ? ' - ' . $variantName : '');
-
             return [
-                'name' => $fullName,
-                'weight' => $weight,
-                'quantity' => $item->quantity,
-                'value' => (int) $item->price,
+                'name' => $item->product_name ?: 'Barang',
+                'weight' => (int) ($item->weight ?: 1000),
+                'quantity' => (int) $item->quantity,
+                'value' => (int) ($item->unit_price ?: $item->price ?: 0),
             ];
         })->toArray();
 

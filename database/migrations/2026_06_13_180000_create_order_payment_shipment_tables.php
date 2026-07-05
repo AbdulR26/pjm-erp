@@ -8,7 +8,26 @@ return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Webhook logs table (for Midtrans & Biteship callbacks)
+        // Drop existing tables to avoid duplicate errors in local development
+        Schema::dropIfExists('shipments');
+        Schema::dropIfExists('payment_histories');
+        Schema::dropIfExists('payments');
+        Schema::dropIfExists('order_items');
+        Schema::dropIfExists('order_histories');
+        Schema::dropIfExists('orders');
+        Schema::dropIfExists('webhook_logs');
+        Schema::dropIfExists('order_statuses');
+
+        // 1. Order Statuses master table
+        Schema::create('order_statuses', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->text('description')->nullable();
+            $table->timestamps();
+        });
+
+        // 2. Webhook logs table (for Midtrans & Biteship callbacks)
         Schema::create('webhook_logs', function (Blueprint $table) {
             $table->id();
             $table->string('provider'); // 'midtrans' or 'biteship'
@@ -19,96 +38,102 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // 2. Orders table (clean, separated concerns)
+        // 3. Orders table
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
             $table->string('order_number')->unique();
             $table->foreignId('customer_id')->constrained('customers')->onDelete('restrict');
+            $table->foreignId('status_id')->constrained('order_statuses')->onDelete('restrict');
 
             // Pricing columns
-            $table->string('customer_level')->default('retail'); // retail, bengkel, reseller
             $table->decimal('subtotal', 12, 2)->default(0);
             $table->decimal('discount', 12, 2)->default(0);
             $table->decimal('shipping_cost', 12, 2)->default(0);
             $table->decimal('grand_total', 12, 2)->default(0);
 
-            // Order status: pending, processing, shipping, completed, cancelled, failed
-            $table->string('status')->default('pending');
-
             $table->text('notes')->nullable();
             $table->timestamps();
         });
 
-        // 3. Order items table
+        // 4. Order histories table
+        Schema::create('order_histories', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
+            $table->foreignId('status_id')->constrained('order_statuses')->onDelete('restrict');
+            $table->text('description')->nullable();
+            $table->timestamp('created_at')->nullable();
+        });
+
+        // 5. Order items table (references products directly)
         Schema::create('order_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
-            $table->foreignId('product_variant_id')->constrained('product_variants')->onDelete('restrict');
-            $table->string('product_name');       // snapshot product name at time of order
-            $table->string('variant_name');       // snapshot variant name
+            $table->foreignId('product_id')->constrained('products')->onDelete('restrict');
+            $table->string('product_name');       // snapshot product name
             $table->string('sku');                // snapshot SKU
             $table->integer('quantity');
-            $table->decimal('unit_price', 12, 2); // price at time of order (based on customer level)
+            $table->decimal('unit_price', 12, 2); // price at time of order
             $table->decimal('total_price', 12, 2);
             $table->decimal('weight', 8, 2)->default(1000); // in grams, snapshot
             $table->timestamps();
         });
 
-        // 4. Payments table (separated from orders)
+        // 6. Payments table
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
-
-            // Payment method selected by customer / admin
-            // e.g. bank_transfer, credit_card, gopay, qris, indomaret, alfamart, shopeepay, ovo
             $table->string('payment_method')->nullable();
-
-            // Status: waiting_payment, paid, expired, cancelled, failed, refunded, pending
             $table->string('status')->default('waiting_payment');
-
             $table->decimal('amount', 12, 2);
 
             // Midtrans fields
             $table->string('snap_token')->nullable();
             $table->string('payment_url')->nullable();
             $table->string('midtrans_transaction_id')->nullable();
-            $table->string('midtrans_payment_type')->nullable();    // actual payment type from notification
-            $table->string('midtrans_va_number')->nullable();       // virtual account number (if applicable)
-            $table->string('midtrans_fraud_status')->nullable();    // accept / deny / challenge
-            $table->json('midtrans_raw_response')->nullable();      // full JSON from Midtrans notification
+            $table->string('midtrans_payment_type')->nullable();
+            $table->string('midtrans_va_number')->nullable();
+            $table->string('midtrans_fraud_status')->nullable();
+            $table->json('midtrans_raw_response')->nullable();
 
             $table->timestamp('paid_at')->nullable();
             $table->timestamp('expired_at')->nullable();
             $table->timestamps();
         });
 
-        // 5. Shipments table (separated from orders)
+        // 7. Payment status history log table
+        Schema::create('payment_histories', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('payment_id')->constrained('payments')->onDelete('cascade');
+            $table->string('status', 50);
+            $table->json('raw_response')->nullable();
+            $table->timestamp('created_at')->nullable();
+        });
+
+        // 8. Shipments table
         Schema::create('shipments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained('orders')->onDelete('cascade');
 
             // Courier info
-            $table->string('courier_company');     // jne, jnt, sicepat, etc
-            $table->string('courier_service');     // REG, YES, OKE, etc
-            $table->string('courier_service_name')->nullable(); // display name
-            $table->string('etd')->nullable();     // estimated time of delivery (e.g. "2-3 days")
+            $table->string('courier_company');
+            $table->string('courier_service');
+            $table->string('courier_service_name')->nullable();
+            $table->string('etd')->nullable();
             $table->decimal('cost', 12, 2)->default(0);
 
             // Biteship integration
             $table->string('biteship_order_id')->nullable();
-            $table->string('waybill_id')->nullable();       // resi / airway bill
+            $table->string('waybill_id')->nullable();
 
-            // Status: draft, pickup_requested, picking_up, picked, dropping_off,
-            //         in_transit, delivered, returned, cancelled, on_hold
             $table->string('status')->default('draft');
 
-            // Origin (seller)
+            // Origin
             $table->string('origin_contact_name')->nullable();
             $table->string('origin_contact_phone')->nullable();
             $table->text('origin_address')->nullable();
             $table->string('origin_postal_code')->nullable();
 
-            // Destination (customer)
+            // Destination
             $table->string('destination_contact_name');
             $table->string('destination_contact_phone');
             $table->text('destination_address');
@@ -116,9 +141,8 @@ return new class extends Migration
             $table->decimal('destination_latitude', 10, 7)->nullable();
             $table->decimal('destination_longitude', 10, 7)->nullable();
 
-            // Proof & tracking
-            $table->string('proof_of_delivery')->nullable(); // image path
-            $table->json('tracking_history')->nullable();    // cached tracking events
+            $table->string('proof_of_delivery')->nullable();
+            $table->json('tracking_history')->nullable();
 
             $table->timestamp('picked_at')->nullable();
             $table->timestamp('shipped_at')->nullable();
@@ -130,9 +154,12 @@ return new class extends Migration
     public function down(): void
     {
         Schema::dropIfExists('shipments');
+        Schema::dropIfExists('payment_histories');
         Schema::dropIfExists('payments');
         Schema::dropIfExists('order_items');
+        Schema::dropIfExists('order_histories');
         Schema::dropIfExists('orders');
         Schema::dropIfExists('webhook_logs');
+        Schema::dropIfExists('order_statuses');
     }
 };

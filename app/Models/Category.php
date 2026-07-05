@@ -10,6 +10,8 @@ class Category extends Model
 {
     use HasFactory;
 
+    protected $table = 'product_categories';
+
     protected $fillable = ['parent_id', 'name', 'slug'];
 
     // Auto-generate slug on creating
@@ -38,6 +40,11 @@ class Category extends Model
     // Get products in this category
     public function products()
     {
-        return $this->hasMany(Product::class);
+        return $this->belongsToMany(
+            Product::class,
+            'product_category_product',
+            'product_category_id',
+            'product_id'
+        );
     }
 }

@@ -1,0 +1,192 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@keyframes shopee-page-fadein { 
+    from { opacity: 0; transform: translateY(16px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+.spg-page-container {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    animation: shopee-page-fadein 0.3s ease;
+    font-family: 'Inter', sans-serif;
+}
+
+.spg-wrap { width: 100%; max-width: 440px; }
+.spg-back-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: #dc2626; font-size: 13px; font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    background: none; border: none; cursor: pointer;
+    padding: 0; margin-bottom: 20px;
+    transition: opacity 0.15s;
+}
+.spg-back-btn:hover { opacity: 0.75; }
+
+.spg-card {
+    background: #fff;
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+
+/* ---- Shopee-style split layout ---- */
+.spg-hero {
+    background: linear-gradient(135deg, #c0001a 0%, #dc2626 55%, #ef4444 100%);
+    padding: 32px 32px 28px;
+    position: relative;
+    overflow: hidden;
+}
+.spg-hero::before {
+    content: '';
+    position: absolute; top: -50px; right: -50px;
+    width: 160px; height: 160px; border-radius: 50%;
+    background: rgba(255,255,255,0.10);
+}
+.spg-hero::after {
+    content: '';
+    position: absolute; bottom: -40px; left: -30px;
+    width: 110px; height: 110px; border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+}
+.spg-hero-content { position: relative; z-index: 5; }
+.spg-brand {
+    font-size: 20px; font-weight: 800; color: #fff;
+    letter-spacing: -0.3px; line-height: 1.1; margin-bottom: 4px;
+}
+.spg-brand span {
+    display: inline-block;
+    background: rgba(255,255,255,0.22);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+.spg-hero-headline {
+    font-size: 24px; font-weight: 800;
+    color: #fff; line-height: 1.2;
+    margin-bottom: 6px;
+}
+.spg-hero-sub {
+    font-size: 12.5px; color: rgba(255,255,255,0.82);
+    font-weight: 500; line-height: 1.4;
+}
+
+.spg-tabs {
+    display: flex;
+    border-bottom: 1px solid #f0f0f0;
+    background: #fdfdfd;
+}
+.spg-tab-btn {
+    flex: 1;
+    padding: 14px;
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    text-align: center;
+}
+.spg-tab-btn:hover {
+    color: #dc2626;
+}
+.spg-tab-btn.active {
+    color: #dc2626;
+    border-bottom-color: #dc2626;
+    font-weight: 700;
+}
+
+.spg-form { padding: 24px 32px 24px; }
+
+.spg-input-group { margin-bottom: 16px; text-align: left; }
+.spg-label { display: block; font-size: 12px; font-weight: 600; color: #555; margin-bottom: 6px; }
+.spg-input-wrapper { position: relative; display: flex; align-items: center; }
+.spg-input-icon { position: absolute; left: 12px; color: #aaa; }
+.spg-input {
+    width: 100%; padding: 11px 14px 11px 38px; border: 1.5px solid #e0e0e0;
+    border-radius: 4px; font-size: 13.5px; font-family: 'Inter', sans-serif;
+    outline: none; transition: all 0.15s; background: #fff;
+}
+.spg-input:focus { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+.spg-input.has-error { border-color: #dc2626; }
+.spg-error-text { display: block; font-size: 11px; color: #dc2626; margin-top: 4px; font-weight: 500; }
+
+.spg-alert {
+    background: #fef2f2; border: 1px solid #fee2e2; border-radius: 4px;
+    padding: 10px 12px; color: #b91c1c; font-size: 12.5px;
+    font-weight: 500; margin-bottom: 16px; text-align: left;
+}
+
+.spg-submit-btn {
+    width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+    background: #dc2626; color: #fff; font-family: 'Inter', sans-serif;
+    font-size: 14px; font-weight: 700; padding: 13px 16px; border-radius: 4px;
+    cursor: pointer; border: none; transition: background 0.15s; margin-top: 8px;
+}
+.spg-submit-btn:hover:not(:disabled) { background: #b91c1c; }
+.spg-submit-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.spg-spinner {
+    width: 16px; height: 16px; border: 2.5px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%; animation: spg-spin 0.6s linear infinite;
+}
+@keyframes spg-spin { to { transform: rotate(360deg); } }
+
+.spg-divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 20px 0 16px;
+}
+.spg-divider-line { flex: 1; height: 1px; background: #eef0f2; }
+.spg-divider-text {
+    font-size: 11px; color: #999; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.4px;
+}
+
+.spg-btn {
+    width: 100%; display: flex; align-items: center;
+    justify-content: center; gap: 10px;
+    padding: 11px 14px; border-radius: 4px;
+    font-size: 13.5px; font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    cursor: pointer; border: none; outline: none;
+    transition: all 0.18s ease;
+}
+.spg-btn-google {
+    background: #fff; border: 1.5px solid #e0e0e0; color: #333;
+}
+.spg-btn-google:hover {
+    background: #f7f7f7; border-color: #c0c0c0;
+}
+.spg-btn-facebook { background: #1877F2; color: #fff; }
+.spg-btn-facebook:hover {
+    background: #166FE5;
+}
+
+.spg-btn-skip {
+    width: 100%; background: transparent;
+    border: 1.5px solid #bbb; color: #666;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px; font-weight: 600;
+    padding: 10px; border-radius: 4px; cursor: pointer;
+    transition: all 0.15s;
+}
+.spg-btn-skip:hover { background: #fafafa; border-color: #888; color: #333; }
+
+.spg-footer {
+    background: #fafafa; border-top: 1px solid #f0f0f0;
+    padding: 12px 32px;
+    display: flex; align-items: center;
+    justify-content: center; gap: 6px;
+}
+.spg-footer-txt { font-size: 11px; color: #aaa; font-weight: 500; }

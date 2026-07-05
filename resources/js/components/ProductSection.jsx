@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Star, MapPin, ShoppingCart, Info, Sparkles, Heart, Filter, X } from 'lucide-react';
 import { formatRupiah } from '../utils/helpers';
 import { useLanguage } from '../context/LanguageContext';
+import useProductSection from '../hooks/useProductSection';
 
 const SORT_OPTIONS = [
     { id: 'rekomendasi', label: 'Rekomendasi' },
@@ -29,59 +30,23 @@ export default function ProductSection({
     onProductClick, 
     onAddToCart,
     wishlist = [],
-    onToggleWishlist
+    onToggleWishlist,
+    settings = {}
 }) {
     const { t } = useLanguage();
-    const [sortBy, setSortBy] = useState('rekomendasi');
-    const [minPriceInput, setMinPriceInput] = useState('');
-    const [maxPriceInput, setMaxPriceInput] = useState('');
-    const [appliedMinPrice, setAppliedMinPrice] = useState(null);
-    const [appliedMaxPrice, setAppliedMaxPrice] = useState(null);
-    const [selectedRating, setSelectedRating] = useState(0);
-    const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-
-    // Filter produk berdasarkan kategori, pencarian, harga, dan rating
-    let filteredProducts = products.filter((prod) => {
-        const matchesCategory = selectedCategory === 'Semua' || prod.category === selectedCategory;
-        const matchesSearch = prod.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              prod.category.toLowerCase().includes(searchQuery.toLowerCase());
-        
-        const priceNum = Number(prod.price);
-        const matchesMinPrice = appliedMinPrice === null || appliedMinPrice === '' || priceNum >= Number(appliedMinPrice);
-        const matchesMaxPrice = appliedMaxPrice === null || appliedMaxPrice === '' || priceNum <= Number(appliedMaxPrice);
-        
-        const matchesRating = selectedRating === 0 || Number(prod.rating) >= selectedRating;
-
-        return matchesCategory && matchesSearch && matchesMinPrice && matchesMaxPrice && matchesRating;
-    });
-
-    // Urutkan produk
-    if (sortBy === 'harga-asc') {
-        filteredProducts.sort((a, b) => a.price - b.price);
-    } else if (sortBy === 'harga-desc') {
-        filteredProducts.sort((a, b) => b.price - a.price);
-    } else if (sortBy === 'terlaris') {
-        filteredProducts.sort((a, b) => b.sold - a.sold);
-    } else if (sortBy === 'terbaru') {
-        filteredProducts.sort((a, b) => b.id - a.id); // Simulasikan id lebih tinggi = terbaru
-    }
-
-    const handleApplyFilters = () => {
-        setAppliedMinPrice(minPriceInput);
-        setAppliedMaxPrice(maxPriceInput);
-        setIsMobileFilterOpen(false);
-    };
-
-    const handleResetFilters = () => {
-        setMinPriceInput('');
-        setMaxPriceInput('');
-        setAppliedMinPrice(null);
-        setAppliedMaxPrice(null);
-        setSelectedRating(0);
-        setIsMobileFilterOpen(false);
-    };
-
-    const isFilterActive = appliedMinPrice !== null || appliedMaxPrice !== null || selectedRating !== 0 || minPriceInput || maxPriceInput;
+    const {
+        sortBy, setSortBy,
+        minPriceInput, setMinPriceInput,
+        maxPriceInput, setMaxPriceInput,
+        appliedMinPrice,
+        appliedMaxPrice,
+        selectedRating, setSelectedRating,
+        isMobileFilterOpen, setIsMobileFilterOpen,
+        filteredProducts,
+        handleApplyFilters,
+        handleResetFilters,
+        isFilterActive
+    } = useProductSection(products, searchQuery, selectedCategory);
 
     return (
         <div className="mt-6 flex flex-col lg:flex-row gap-6">
@@ -176,15 +141,15 @@ export default function ProductSection({
             <div className="grow">
                 {/* Filter & Sort Bar (Shopee Style) */}
                 <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-100 mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center justify-between w-full md:w-auto gap-4">
-                        <div className="flex items-center space-x-2 text-slate-500 text-sm">
-                            <span className="font-semibold text-slate-700">{t('products.sort_by')}</span>
-                            <div className="flex flex-wrap gap-2">
+                    <div className="flex items-center justify-between w-full gap-4">
+                        <div className="flex items-center space-x-2 text-slate-500 text-sm min-w-0 flex-1">
+                            <span className="font-semibold text-slate-700 shrink-0">{t('products.sort_by')}</span>
+                            <div className="flex overflow-x-auto gap-2 pb-1 flex-1 min-w-0 scrollbar-none">
                                 {SORT_OPTIONS.map((opt) => (
                                     <button
                                         key={opt.id}
                                         onClick={() => setSortBy(opt.id)}
-                                        className={`px-4 py-2 text-xs md:text-sm font-semibold rounded-md transition duration-200 cursor-pointer ${
+                                        className={`px-3 py-1.5 text-xs md:text-sm font-semibold rounded-md transition duration-200 cursor-pointer shrink-0 ${
                                             sortBy === opt.id
                                                 ? 'bg-red-600 text-white shadow-md shadow-red-500/20'
                                                 : 'bg-slate-100 text-slate-655 hover:bg-slate-200'
@@ -199,7 +164,7 @@ export default function ProductSection({
                         {/* Mobile Filter Trigger Button */}
                         <button
                             onClick={() => setIsMobileFilterOpen(true)}
-                            className="lg:hidden flex items-center gap-1.5 bg-slate-100 hover:bg-slate-250 text-slate-700 px-4 py-2.5 rounded-lg text-xs md:text-sm font-semibold cursor-pointer transition border border-slate-200/50"
+                            className="lg:hidden flex items-center gap-1.5 bg-slate-100 hover:bg-slate-250 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-semibold cursor-pointer transition border border-slate-200/50 shrink-0"
                         >
                             <Filter size={13} className="text-red-600" />
                             <span>{t('products.filter_title')}</span>
@@ -268,7 +233,7 @@ export default function ProductSection({
                                 className={`absolute ${prod.discount > 0 ? 'top-11' : 'top-2'} right-2 bg-white/80 hover:bg-white text-slate-400 hover:text-rose-500 p-2 rounded-full shadow-md transition duration-300 hover:scale-110 z-20 flex items-center justify-center`}
                                 title={t('products.add_to_wishlist', { defaultValue: 'Tambah ke Favorit' })}
                             >
-                                <Heart size={14} className={wishlist.some(item => item.id === prod.id) ? 'fill-rose-500 text-rose-500' : ''} />
+                                <Heart size={14} className={wishlist.some(item => parseInt(item.id) === parseInt(prod.id)) ? 'fill-rose-500 text-rose-500' : ''} />
                             </button>
 
                             {/* Hover Quick Add to Cart Button */}
@@ -323,7 +288,7 @@ export default function ProductSection({
                                 {/* Location (Shopee style bottom tag) */}
                                 <div className="flex items-center justify-end text-[9px] text-slate-400 mt-1.5">
                                     <MapPin size={10} className="mr-0.5 text-slate-300" />
-                                    <span>{t('products.location')}</span>
+                                    <span>{settings.store_city || 'Kota Bekasi'}</span>
                                 </div>
                             </div>
                         </div>

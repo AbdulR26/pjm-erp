@@ -13,6 +13,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->redirectGuestsTo('/adminv1/login');
+        $middleware->validateCsrfTokens(except: [
+            'adminv1/api/*',
+            'api/v1/*',
+        ]);
+        $middleware->alias([
+            'auth.jwt' => \App\Http\Middleware\JwtAuthenticate::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

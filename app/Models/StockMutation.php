@@ -4,20 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Product;
 
 class StockMutation extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['product_variant_id', 'user_id', 'type', 'quantity', 'source', 'notes'];
+    protected $fillable = ['product_id', 'user_id', 'type', 'quantity', 'reference_type', 'reference_id', 'notes'];
 
     protected $casts = [
         'quantity' => 'integer',
     ];
 
-    public function variant()
+    public function product()
     {
-        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
+        return $this->belongsTo(Product::class, 'product_id');
     }
 
     public function user()

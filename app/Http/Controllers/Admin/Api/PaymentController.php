@@ -195,7 +195,18 @@ class PaymentController extends Controller
             // Update order status based on payment outcome
             if ($newStatus === Payment::STATUS_PAID) {
                 $payment->update(['paid_at' => now(), 'payment_method' => $paymentType]);
-                $order->update(['status' => Order::STATUS_PROCESSING]);
+                
+                $processingStatus = \App\Models\OrderStatus::where('slug', 'processing')->first();
+                if ($processingStatus) {
+                    $order->update(['status_id' => $processingStatus->id]);
+                    $order->histories()->create([
+                        'status_id' => $processingStatus->id,
+                        'description' => 'Status otomatis diperbarui menjadi Processing karena pembayaran telah lunas (Midtrans Webhook).',
+                    ]);
+                }
+
+                // Deduct product stock automatically
+                Order::deductStock($order);
 
                 // Notify customer of payment success
                 \App\Models\CustomerNotification::create([
@@ -206,7 +217,14 @@ class PaymentController extends Controller
                     'link' => '?page=profile&tab=orders',
                 ]);
             } elseif (in_array($newStatus, [Payment::STATUS_EXPIRED, Payment::STATUS_CANCELLED, Payment::STATUS_FAILED])) {
-                $order->update(['status' => Order::STATUS_FAILED]);
+                $failedStatus = \App\Models\OrderStatus::where('slug', 'failed')->first();
+                if ($failedStatus) {
+                    $order->update(['status_id' => $failedStatus->id]);
+                    $order->histories()->create([
+                        'status_id' => $failedStatus->id,
+                        'description' => 'Status otomatis diperbarui menjadi Failed karena pembayaran gagal/kedaluwarsa (Midtrans Webhook).',
+                    ]);
+                }
 
                 $statusLabel = match($newStatus) {
                     Payment::STATUS_EXPIRED   => 'kedaluwarsa',

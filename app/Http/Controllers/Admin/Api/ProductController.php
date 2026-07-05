@@ -79,6 +79,10 @@ class ProductController extends Controller
                 'sold_count' => $product->sold_count,
                 'is_flash_sale' => (bool) $product->is_flash_sale,
                 'flash_sale_stock' => $product->flash_sale_stock,
+                'discount_percent' => (int) $product->discount_percent,
+                'flash_sale_price' => $product->flash_sale_price ? (float) $product->flash_sale_price : null,
+                'flash_sale_start' => $product->flash_sale_start ? (\Carbon\Carbon::parse($product->flash_sale_start)->toDateTimeString()) : null,
+                'flash_sale_end' => $product->flash_sale_end ? (\Carbon\Carbon::parse($product->flash_sale_end)->toDateTimeString()) : null,
                 'attributes' => $product->attributes ?: new \stdClass(),
                 'variants' => $product->variants->map(function ($v) {
                     return [
@@ -146,6 +150,10 @@ class ProductController extends Controller
             'prices.*.price' => 'required|numeric|min:0',
             'is_flash_sale' => 'nullable|boolean',
             'flash_sale_stock' => 'nullable|integer|min:0',
+            'discount_percent' => 'nullable|integer|min:0|max:100',
+            'flash_sale_price' => 'nullable|numeric|min:0',
+            'flash_sale_start' => 'nullable|date',
+            'flash_sale_end' => 'nullable|date',
             'gallery_images' => 'nullable|array',
             'gallery_images.*' => 'required|string'
         ]);
@@ -165,6 +173,10 @@ class ProductController extends Controller
                 'sold_count' => 0,
                 'is_flash_sale' => $validated['is_flash_sale'] ?? false,
                 'flash_sale_stock' => $validated['flash_sale_stock'] ?? 0,
+                'discount_percent' => $validated['discount_percent'] ?? 0,
+                'flash_sale_price' => $validated['flash_sale_price'] ?? null,
+                'flash_sale_start' => $validated['flash_sale_start'] ?? null,
+                'flash_sale_end' => $validated['flash_sale_end'] ?? null,
                 'attributes' => $validated['attributes'] ?? []
             ]);
 
@@ -268,6 +280,10 @@ class ProductController extends Controller
             'prices.*.price' => 'required|numeric|min:0',
             'is_flash_sale' => 'nullable|boolean',
             'flash_sale_stock' => 'nullable|integer|min:0',
+            'discount_percent' => 'nullable|integer|min:0|max:100',
+            'flash_sale_price' => 'nullable|numeric|min:0',
+            'flash_sale_start' => 'nullable|date',
+            'flash_sale_end' => 'nullable|date',
             'gallery_images' => 'nullable|array',
             'gallery_images.*' => 'required|string'
         ]);
@@ -284,6 +300,10 @@ class ProductController extends Controller
                 'badge' => $validated['badge'] ?? null,
                 'is_flash_sale' => $validated['is_flash_sale'] ?? false,
                 'flash_sale_stock' => $validated['flash_sale_stock'] ?? 0,
+                'discount_percent' => $validated['discount_percent'] ?? 0,
+                'flash_sale_price' => $validated['flash_sale_price'] ?? null,
+                'flash_sale_start' => $validated['flash_sale_start'] ?? null,
+                'flash_sale_end' => $validated['flash_sale_end'] ?? null,
                 'attributes' => $validated['attributes'] ?? []
             ]);
 

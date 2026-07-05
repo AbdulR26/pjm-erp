@@ -1,0 +1,18 @@
+{
+  "name": "qollam/customer",
+  "version": "1.0.0",
+  "description": "Qollam Customer Module",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Qollam\\Customer\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Qollam\\Customer\\CustomerServiceProvider"
+      ]
+    }
+  }
+}

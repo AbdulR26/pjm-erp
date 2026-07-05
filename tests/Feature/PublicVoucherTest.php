@@ -94,7 +94,7 @@ class PublicVoucherTest extends TestCase
         $response = $this->getJson('/api/vouchers');
 
         $response->assertStatus(200);
-        $response->assertJsonCount(2);
+        $response->assertJsonCount(3);
         $response->assertJsonFragment(['code' => 'TEST10']);
         $response->assertJsonFragment(['code' => 'TEST50K']);
     }

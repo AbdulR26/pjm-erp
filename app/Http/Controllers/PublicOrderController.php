@@ -6,8 +6,8 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\Shipment;
-use App\Models\ProductVariant;
-use App\Models\ProductPrice;
+use App\Models\Product;
+use App\Models\OrderStatus;
 use App\Models\Voucher;
 use App\Services\MidtransService;
 use Illuminate\Http\Request;
@@ -120,28 +120,39 @@ class PublicOrderController extends Controller
             $orderItems = [];
 
             foreach ($validated['items'] as $item) {
-                // Find matching product variant
-                $variant = ProductVariant::where('product_id', $item['product_id'])
-                    ->where('name', $item['variant_name'] ?? '')
-                    ->first();
-                
-                // Fallback to first variant if not found by name
-                if (!$variant) {
-                    $variant = ProductVariant::where('product_id', $item['product_id'])->first();
-                }
-
-                if (!$variant) {
+                // Find parent product
+                $parentProduct = Product::find($item['product_id']);
+                if (!$parentProduct) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => "Produk atau varian tidak ditemukan."
+                        'message' => "Produk tidak ditemukan."
                     ], 422);
+                }
+
+                $variant = null;
+                // If variant_name is provided, search child product variant
+                if (!empty($item['variant_name'])) {
+                    $variant = Product::where('parent_id', $parentProduct->id)
+                        ->where('name', $item['variant_name'])
+                        ->first();
+                }
+
+                // Fallback to first variant if product has variants but name was not matched
+                $hasVariants = Product::where('parent_id', $parentProduct->id)->exists();
+                if (!$variant && $hasVariants) {
+                    $variant = Product::where('parent_id', $parentProduct->id)->first();
+                }
+
+                // If no variants exist, use parent product itself
+                if (!$variant) {
+                    $variant = $parentProduct;
                 }
 
                 // Check stock availability
                 if ($variant->stock < $item['quantity']) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => "Stok tidak cukup untuk produk: {$variant->product->name} - {$variant->name}. Stok tersedia: {$variant->stock}"
+                        'message' => "Stok tidak cukup untuk produk: " . ($variant->parent_id ? $parentProduct->name . " - " . $variant->name : $variant->name) . ". Stok tersedia: {$variant->stock}"
                     ], 422);
                 }
 
@@ -151,18 +162,11 @@ class PublicOrderController extends Controller
                 $subtotal += $totalPrice;
 
                 // Resolve product weight (default 1000 grams)
-                $weight = 1000;
-                $product = $variant->product;
-                if ($product->attributes && isset($product->attributes['weight'])) {
-                    $weight = (int) $product->attributes['weight'];
-                } elseif ($product->attributes && isset($product->attributes['berat'])) {
-                    $weight = (int) $product->attributes['berat'];
-                }
+                $weight = $variant->weight > 0 ? (int) $variant->weight : ($parentProduct->weight > 0 ? (int) $parentProduct->weight : 1000);
 
                 $orderItems[] = [
-                    'product_variant_id' => $variant->id,
-                    'product_name' => $product->name,
-                    'variant_name' => $variant->name,
+                    'product_id' => $variant->id, // ID of variant or main product
+                    'product_name' => $variant->parent_id ? $parentProduct->name . ' - ' . $variant->name : $variant->name,
                     'sku' => $variant->sku ?: '',
                     'quantity' => $item['quantity'],
                     'unit_price' => $unitPrice,
@@ -212,7 +216,7 @@ class PublicOrderController extends Controller
                 'discount' => $discount,
                 'shipping_cost' => $shippingCost,
                 'grand_total' => $grandTotal,
-                'status' => Order::STATUS_PENDING,
+                'status_id' => 1, // 1 = pending
                 'notes' => $validated['notes'] ?? null,
             ]);
 
@@ -220,8 +224,8 @@ class PublicOrderController extends Controller
             foreach ($orderItems as $itemData) {
                 $order->items()->create($itemData);
 
-                // Decrement stock
-                ProductVariant::where('id', $itemData['product_variant_id'])
+                // Decrement stock in products table
+                Product::where('id', $itemData['product_id'])
                     ->decrement('stock', $itemData['quantity']);
             }
 
@@ -283,7 +287,7 @@ class PublicOrderController extends Controller
 
             return response()->json([
                 'message' => 'Order berhasil dibuat.',
-                'order' => $order->load(['items.productVariant.product', 'payment', 'shipment']),
+                'order' => $order->load(['items.product.images', 'payment', 'shipment']),
             ], 201);
 
         } catch (\Exception $e) {
@@ -322,7 +326,7 @@ class PublicOrderController extends Controller
             ]);
 
             $order->update([
-                'status' => Order::STATUS_PROCESSING,
+                'status_id' => 2, // 2 = processing
             ]);
 
             // Create notification for customer
@@ -339,7 +343,7 @@ class PublicOrderController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Simulasi pembayaran berhasil.',
-                'order' => $order->fresh(['items.productVariant.product', 'payment', 'shipment']),
+                'order' => $order->fresh(['items.product.images', 'payment', 'shipment']),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -413,7 +417,7 @@ class PublicOrderController extends Controller
             }
 
             $order->update([
-                'status' => Order::STATUS_COMPLETED,
+                'status_id' => 4, // 4 = completed
             ]);
 
             // Create notification for customer
@@ -430,7 +434,7 @@ class PublicOrderController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Simulasi pengiriman berhasil diselesaikan.',
-                'order' => $order->fresh(['items.productVariant.product', 'payment', 'shipment', 'reviews']),
+                'order' => $order->fresh(['items.product.images', 'payment', 'shipment', 'reviews']),
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -439,21 +443,27 @@ class PublicOrderController extends Controller
     }
 
     /**
-     * Resolve unit price based on tiered pricing or variant base price.
+     * Resolve unit price based on promotions (flash sale, discount) or base price.
      */
-    private function resolvePrice(ProductVariant $variant, string $level, int $qty): float
+    private function resolvePrice(Product $productOrVariant, string $level, int $qty): float
     {
-        $tieredPrice = ProductPrice::where('product_variant_id', $variant->id)
-            ->where('level', $level)
-            ->where('min_qty', '<=', $qty)
-            ->orderBy('min_qty', 'desc')
-            ->first();
+        $now = now();
+        $isFlashSaleActive = $productOrVariant->is_flash_sale 
+            && $productOrVariant->flash_sale_stock >= $qty 
+            && $productOrVariant->flash_sale_start 
+            && $productOrVariant->flash_sale_end 
+            && $now->between($productOrVariant->flash_sale_start, $productOrVariant->flash_sale_end);
 
-        if ($tieredPrice) {
-            return (float) $tieredPrice->price;
+        if ($isFlashSaleActive && $productOrVariant->flash_sale_price > 0) {
+            return (float) $productOrVariant->flash_sale_price;
         }
 
-        return (float) $variant->base_price;
+        $discount = (int) ($productOrVariant->discount_percent ?? 0);
+        if ($discount > 0) {
+            return round((float) $productOrVariant->price * (1 - ($discount / 100)));
+        }
+
+        return (float) $productOrVariant->price;
     }
 
     /**
@@ -466,7 +476,7 @@ class PublicOrderController extends Controller
             return response()->json(['message' => 'Silakan login terlebih dahulu.'], 401);
         }
 
-        $orders = Order::with(['items.productVariant.product', 'payment', 'shipment', 'reviews'])
+        $orders = Order::with(['items.product.images', 'payment', 'shipment', 'reviews'])
             ->where('customer_id', $customer['id'])
             ->orderBy('created_at', 'desc')
             ->get();
@@ -488,7 +498,7 @@ class PublicOrderController extends Controller
             return response()->json(['message' => 'Silakan login terlebih dahulu.'], 401);
         }
 
-        $order = Order::with(['customer', 'items.productVariant.product', 'payment', 'shipment', 'reviews'])
+        $order = Order::with(['customer', 'items.product.images', 'payment', 'shipment', 'reviews'])
             ->where('customer_id', $customer['id'])
             ->findOrFail($orderId);
 
@@ -555,34 +565,39 @@ class PublicOrderController extends Controller
         try {
             $items = [];
             foreach ($validated['items'] as $item) {
-                // Find matching product variant
-                $variant = ProductVariant::where('product_id', $item['product_id'])
-                    ->where('name', $item['variant_name'] ?? '')
-                    ->first();
-                
-                // Fallback to first variant if not found by name
-                if (!$variant) {
-                    $variant = ProductVariant::where('product_id', $item['product_id'])->first();
+                // Find parent product
+                $parentProduct = Product::find($item['product_id']);
+                if (!$parentProduct) {
+                    continue;
                 }
 
+                $variant = null;
+                // If variant_name is provided, search child product variant
+                if (!empty($item['variant_name'])) {
+                    $variant = Product::where('parent_id', $parentProduct->id)
+                        ->where('name', $item['variant_name'])
+                        ->first();
+                }
+
+                // Fallback to first variant if product has variants but name was not matched
+                $hasVariants = Product::where('parent_id', $parentProduct->id)->exists();
+                if (!$variant && $hasVariants) {
+                    $variant = Product::where('parent_id', $parentProduct->id)->first();
+                }
+
+                // If no variants exist, use parent product itself
                 if (!$variant) {
-                    continue;
+                    $variant = $parentProduct;
                 }
 
                 // Resolve price for retail customer
                 $unitPrice = $this->resolvePrice($variant, 'retail', $item['quantity']);
 
                 // Resolve product weight (default 1000 grams)
-                $weight = 1000;
-                $product = $variant->product;
-                if ($product->attributes && isset($product->attributes['weight'])) {
-                    $weight = (int) $product->attributes['weight'];
-                } elseif ($product->attributes && isset($product->attributes['berat'])) {
-                    $weight = (int) $product->attributes['berat'];
-                }
+                $weight = $variant->weight > 0 ? (int) $variant->weight : ($parentProduct->weight > 0 ? (int) $parentProduct->weight : 1000);
 
                 $items[] = [
-                    'name'     => $product->name . ($variant->name ? ' - ' . $variant->name : ''),
+                    'name'     => $variant->parent_id ? $parentProduct->name . ' - ' . $variant->name : $variant->name,
                     'value'    => (int) $unitPrice,
                     'weight'   => (int) $weight,
                     'quantity' => (int) $item['quantity'],
@@ -618,7 +633,7 @@ class PublicOrderController extends Controller
      */
     private function syncPaymentStatus(Order $order): void
     {
-        if ($order->status === Order::STATUS_PENDING && $order->payment && $order->payment->isWaiting()) {
+        if ($order->status_id === 1 && $order->payment && $order->payment->isWaiting()) {
             try {
                 $statusData = $this->midtransService->getTransactionStatus($order->order_number);
                 $transactionStatus = $statusData['transaction_status'] ?? null;
@@ -639,9 +654,9 @@ class PublicOrderController extends Controller
 
                             if ($newStatus === Payment::STATUS_PAID) {
                                 $order->payment->update(['paid_at' => now(), 'payment_method' => $paymentType ?? $order->payment->payment_method]);
-                                $order->update(['status' => Order::STATUS_PROCESSING]);
+                                $order->update(['status_id' => 2]); // 2 = processing
                             } elseif (in_array($newStatus, [Payment::STATUS_EXPIRED, Payment::STATUS_CANCELLED, Payment::STATUS_FAILED])) {
-                                $order->update(['status' => Order::STATUS_FAILED]);
+                                $order->update(['status_id' => 6]); // 6 = failed
                             }
                         });
                         
@@ -706,7 +721,7 @@ class PublicOrderController extends Controller
 
                 if ($trackingData['status'] === Shipment::STATUS_DELIVERED) {
                     $shipment->update(['delivered_at' => now()]);
-                    $order->update(['status' => Order::STATUS_COMPLETED]);
+                    $order->update(['status_id' => 4]); // 4 = completed
                 }
 
                 $shipment = $shipment->fresh();
@@ -728,11 +743,11 @@ class PublicOrderController extends Controller
             return response()->json(['message' => 'Silakan login terlebih dahulu.'], 401);
         }
 
-        $order = Order::with('items.productVariant')
+        $order = Order::with('items.product')
             ->where('customer_id', $customer['id'])
             ->findOrFail($orderId);
 
-        if ($order->status !== Order::STATUS_COMPLETED) {
+        if ($order->status_id !== 4) { // 4 = completed
             return response()->json(['message' => 'Anda hanya dapat memberikan ulasan untuk pesanan yang sudah selesai.'], 400);
         }
 
@@ -754,7 +769,7 @@ class PublicOrderController extends Controller
         // Verify that the product belongs to this order
         $hasProduct = false;
         foreach ($order->items as $item) {
-            if ($item->productVariant && $item->productVariant->product_id == $validated['product_id']) {
+            if ($item->product_id == $validated['product_id'] || ($item->product && $item->product->parent_id == $validated['product_id'])) {
                 $hasProduct = true;
                 break;
             }

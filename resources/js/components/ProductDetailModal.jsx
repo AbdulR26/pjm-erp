@@ -1,18 +1,37 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Star, ShoppingCart, ShieldCheck, Heart, Share2, Plus, Minus } from 'lucide-react';
 import { formatRupiah, getStoreName, getWhatsAppLink } from '../utils/helpers';
 
 export default function ProductDetailModal({ product, onClose, onAddToCart, settings = {} }) {
     const storeName = getStoreName(settings);
-    const [selectedVariant, setSelectedVariant] = useState(product.variants[0] || '');
+    const [selectedVariant, setSelectedVariant] = useState(
+        product.variants && product.variants.length > 0 ? product.variants[0] : null
+    );
     const [quantity, setQuantity] = useState(1);
     const [isWishlist, setIsWishlist] = useState(false);
+    const [activeImage, setActiveImage] = useState(product.image);
 
-    const incrementQty = () => setQuantity((prev) => prev + 1);
+    const displayPrice = selectedVariant ? selectedVariant.price : product.price;
+    const displayStock = selectedVariant ? selectedVariant.stock : product.stock;
+    const displayDiscount = selectedVariant && selectedVariant.discount !== undefined ? selectedVariant.discount : product.discount;
+    const displayOriginalPrice = selectedVariant && selectedVariant.originalPrice !== undefined ? selectedVariant.originalPrice : product.originalPrice;
+
+    useEffect(() => {
+        if (selectedVariant && selectedVariant.image) {
+            setActiveImage(selectedVariant.image);
+        }
+    }, [selectedVariant]);
+
+    const incrementQty = () => setQuantity((prev) => {
+        if (displayStock !== undefined && displayStock !== null) {
+            return prev < displayStock ? prev + 1 : prev;
+        }
+        return prev + 1;
+    });
     const decrementQty = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
 
     const handleAddToCartClick = () => {
-        onAddToCart(product, quantity, selectedVariant);
+        onAddToCart(product, quantity, selectedVariant ? selectedVariant.name : '');
     };
 
     return (
@@ -32,13 +51,13 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, sett
                 <div className="w-full md:w-[45%] p-6 bg-slate-50 rounded-t-2xl md:rounded-t-none md:rounded-l-2xl flex flex-col justify-center items-center border-b md:border-b-0 md:border-r border-slate-100">
                     <div className="relative w-full aspect-square rounded-xl overflow-hidden shadow-inner bg-white mb-4">
                         <img
-                            src={product.image}
+                            src={activeImage}
                             alt={product.name}
                             className="w-full h-full object-cover"
                         />
-                        {product.discount > 0 && (
+                        {displayDiscount > 0 && (
                             <span className="absolute top-3 right-3 bg-rose-500 text-white font-extrabold text-xs px-2.5 py-1 rounded shadow">
-                                DISKON {product.discount}%
+                                DISKON {displayDiscount}%
                             </span>
                         )}
                     </div>
@@ -89,17 +108,17 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, sett
                         <div className="bg-linear-to-r from-red-50 to-red-50/10 rounded-xl p-4 mb-5 border border-red-100/50 flex flex-col justify-center">
                             <div className="flex items-baseline space-x-2.5">
                                 <span className="text-xl md:text-2xl font-black text-red-600">
-                                    {formatRupiah(product.price)}
+                                    {formatRupiah(displayPrice)}
                                 </span>
-                                {product.discount > 0 && (
+                                {displayDiscount > 0 && (
                                     <span className="text-xs text-rose-500 font-bold bg-rose-50 px-1.5 py-0.5 rounded">
-                                        -{product.discount}%
+                                        -{displayDiscount}%
                                     </span>
                                 )}
                             </div>
-                            {product.discount > 0 && (
+                            {displayDiscount > 0 && (
                                 <span className="text-xs text-slate-400 line-through mt-0.5">
-                                    MSRP: {formatRupiah(product.originalPrice)}
+                                    MSRP: {formatRupiah(displayOriginalPrice)}
                                 </span>
                             )}
                         </div>
@@ -136,15 +155,15 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, sett
                                 <div className="flex flex-wrap gap-2">
                                     {product.variants.map((v) => (
                                         <button
-                                            key={v}
+                                            key={v.id}
                                             onClick={() => setSelectedVariant(v)}
                                             className={`px-4 py-1.5 text-xs font-bold rounded-lg border transition duration-200 cursor-pointer ${
-                                                selectedVariant === v
+                                                selectedVariant?.id === v.id
                                                     ? 'bg-red-600 text-white border-red-600 shadow-md shadow-red-500/20'
                                                     : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                                             }`}
                                         >
-                                            {v}
+                                            {v.name}
                                         </button>
                                     ))}
                                 </div>
@@ -171,6 +190,11 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, sett
                                     <Plus size={14} />
                                 </button>
                             </div>
+                            <span className="text-slate-400 text-xs font-semibold">
+                                {displayStock !== undefined && displayStock !== null && displayStock > 0
+                                    ? `Stok: ${displayStock} pcs`
+                                    : displayStock === 0 ? 'Stok Habis' : 'Stok Tersedia'}
+                            </span>
                         </div>
                     </div>
 
@@ -187,7 +211,7 @@ export default function ProductDetailModal({ product, onClose, onAddToCart, sett
                         <a
                             href={getWhatsAppLink(
                                 settings,
-                                `Halo ${storeName}, saya tertarik membeli ${product.name} (Varian: ${selectedVariant}, Jumlah: ${quantity}). Bagaimana proses selanjutnya?`
+                                `Halo ${storeName}, saya tertarik membeli ${product.name} (Varian: ${selectedVariant ? selectedVariant.name : '-'}, Jumlah: ${quantity}). Bagaimana proses selanjutnya?`
                             )}
                             target="_blank"
                             rel="noopener noreferrer"

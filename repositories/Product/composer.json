@@ -1,0 +1,18 @@
+{
+  "name": "qollam/product",
+  "version": "1.0.0",
+  "description": "Qollam Product Module",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Qollam\\Product\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Qollam\\Product\\ProductServiceProvider"
+      ]
+    }
+  }
+}

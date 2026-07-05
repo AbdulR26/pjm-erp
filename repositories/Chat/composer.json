@@ -1,0 +1,18 @@
+{
+  "name": "qollam/chat",
+  "version": "1.0.0",
+  "description": "Qollam Chat Module",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Qollam\\Chat\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Qollam\\Chat\\ChatServiceProvider"
+      ]
+    }
+  }
+}

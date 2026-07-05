@@ -1,0 +1,295 @@
+/*---------------------------------------- 
+  Available Layout type names
+-----------------------------------------*/
+
+/*
+ 1. vertical-modern-menu-template
+ 2. vertical-menu-nav-dark-template
+ 3. vertical-gradient-menu-template
+ 4. vertical-dark-menu-template
+ 5. horizontal-menu-template
+
+/* Need to change Layout name as per your requirement on below mentioned line.*/
+
+/*
+1. @import "../themes/vertical-gradient-menu-template/variables"; 
+2. @import "../themes/vertical-gradient-menu-template/theme-variables";
+*/
+
+/* Invoice list */
+
+/*---------------*/
+
+.section {
+  margin-top: 45px;
+  margin-bottom: 22px;
+  /* invoice wrapper */
+}
+
+.section .card-content {
+  /* data table */
+  /* Data table Pagination*/
+  /* small bullet*/
+}
+
+.section .card-content .top .action-filters {
+  flex-grow: 0.95;
+}
+
+.section .card-content .top .action-filters .dataTables_filter {
+  width: 100%;
+  padding-right: 30px;
+}
+
+.section .card-content .top .action-filters .dataTables_filter label {
+  position: relative;
+}
+
+.section .card-content .top .action-filters .dataTables_filter label input[type=search] {
+  border: 1px solid #9e9e9e !important;
+  background: white;
+  margin: 0;
+  height: 3.2rem;
+  padding-left: 1.5rem;
+  border-radius: 150px;
+  border-bottom: none;
+}
+
+.section .card-content .top .action-filters .dataTables_filter label input[type=search]:focus {
+  box-shadow: none;
+}
+
+.section .card-content .top .action-filters .dataTables_filter label .filter-btn {
+  position: absolute;
+  right: 7px;
+  top: -12px;
+}
+
+.section .card-content .top .action-btns {
+  flex-grow: 0.05;
+  justify-content: space-around;
+}
+
+.section .card-content .invoice-data-table {
+  border-collapse: collapse;
+  box-shadow: box-shadow 0.25s;
+}
+
+.section .card-content .invoice-data-table th {
+  /*width: auto !important;*/
+  width: auto;
+  padding: 19px 15px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.section .card-content .invoice-data-table.dataTable tbody td {
+  padding: 0.8rem 0.8rem;
+}
+
+.section .card-content .invoice-data-table.dataTable tbody td .invoice-action a {
+  color: #9e9e9e;
+}
+
+.section .card-content .invoice-data-table.dataTable tbody td .invoice-action a i {
+  font-size: 1.5rem;
+}
+
+.section .card-content .invoice-data-table tr:last-child {
+  border-bottom-color: transparent;
+}
+
+.section .card-content .invoice-data-table .dt-checkboxes-cell {
+  /* Data Table checkbox style */
+}
+
+.section .card-content .invoice-data-table .dt-checkboxes-cell input {
+  opacity: 0.5;
+  -webkit-appearance: none;
+}
+
+.section .card-content .invoice-data-table .dt-checkboxes-cell input::before,
+.section .card-content .invoice-data-table .dt-checkboxes-cell input::after {
+  content: "";
+  position: absolute;
+  border-radius: 4px;
+  top: -4px;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  z-index: 0;
+  border: 2px solid #9e9e9e;
+  margin-top: -3px;
+  transition: 0.2s;
+}
+
+.section .card-content .invoice-data-table .dt-checkboxes-cell input:checked:before,
+.section .card-content .invoice-data-table .dt-checkboxes-cell input:checked::after {
+  top: -4px;
+  left: -5px;
+  width: 12px;
+  height: 22px;
+  border-top: 2px solid transparent;
+  border-left: 2px solid transparent;
+  border-right: 2px solid #ff4081;
+  border-bottom: 2px solid #ff4081;
+  transform: rotate(40deg);
+  -webkit-backface-visibility: hidden;
+          backface-visibility: hidden;
+  transform-origin: 100% 100%;
+}
+
+.section .card-content .bottom {
+  margin-top: 1rem;
+}
+
+.section .card-content .bottom .dataTables_paginate .paginate_button {
+  padding: 0.25em 0.65em;
+  margin-top: 0.25rem;
+}
+
+.section .card-content .bottom .dataTables_paginate .paginate_button.current,
+.section .card-content .bottom .dataTables_paginate .paginate_button:hover {
+  border-radius: 6px;
+  background: #2196F3;
+  border: 1px solid #2196F3;
+  box-shadow: 0px 0px 8px 0px #2196F3;
+  color: white !important;
+}
+
+.section .card-content .bullet {
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 0.2rem;
+}
+
+.responsive-table {
+    overflow-y: auto;
+}
+
+ table.dataTable.dtr-column > tbody > tr > td.control:before,
+ table.dataTable.dtr-column > tbody > tr > th.control:before {
+  left: 80%;
+}
+
+@media (min-width: 600px) {
+  /* responsive table*/
+
+  .section .card-content .top .action-btns,
+  .section .card-content .top .action-filters {
+    /* filters btn positioning on above middium screen */
+  }
+
+  .section .card-content .top .action-btns .btn,
+  .section .card-content .top .action-filters .btn {
+    padding: 0 1rem;
+  }
+
+  .section .card-content .top .action-btns .btn i,
+  .section .card-content .top .action-filters .btn i {
+    float: left;
+    margin-right: 8px;
+  }
+
+  .invoice-date-picker {
+    justify-content: flex-end;
+  }
+
+  .invoice-logo {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 600px) {
+  .invoice-payment {
+    border: 1px solid #e8e8e8;
+    border-radius: 4px;
+    padding: 1rem;
+  }
+
+  /* Date picker*/
+
+  .invoice-date-picker {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 1054px) and (min-width: 600px) {
+  .invoice-action-wrapper .btn .responsive-text {
+    /* Button text */
+    font-size: 0.8rem;
+  }
+}
+
+@media (min-width: 1201px) {
+  .invoice-view-wrapper .invoice-date {
+    justify-content: flex-end;
+  }
+}
+
+@media print {
+  /* Hide a Unnecessary div while print invoice*/
+
+  html,
+  body {
+    visibility: hidden;
+  }
+
+  .invoice-print-area {
+    visibility: visible;
+    page-break-after: auto;
+  }
+
+  .invoice-print-area .divider {
+    margin: 0.5rem 0 !important;
+  }
+
+  .invoice-action-wrapper,
+  .sidenav-main,
+  .navbar,
+  .btn-customizer,
+  .theme-cutomizer,
+  .btn-buy-now,
+  .page-footer {
+    display: none;
+  }
+
+  /* card shadow remove while printing invoice*/
+
+  .card {
+    box-shadow: none;
+  }
+
+  .card .card-content {
+    padding: 0 !important;
+  }
+
+  /* table border added while printing invoice*/
+
+  table th,
+  table td {
+    border: 1px solid #e8e8e8;
+  }
+
+  /* column size change*/
+
+  .invoice-subtotal .row .col {
+    width: 50% !important;
+  }
+
+  .invoice-date-number .col,
+  .invoice-logo-title .col,
+  .invoice-info .col {
+    width: 50% !important;
+  }
+}
+
+@page {
+  size: auto;
+  /* auto is the initial value */
+  margin: 0;
+  padding: 0;
+  /* this affects the margin in the printer settings */
+}
+

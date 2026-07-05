@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { Search, ShoppingCart, Bell, HelpCircle, User, Car, MessageSquare, ChevronDown, LogOut, X, CheckCheck, Trash2, Heart } from 'lucide-react';
-import { getStoreName, getWhatsAppLink } from '../utils/helpers';
+import { getStoreName, getWhatsAppLink, formatRupiah } from '../utils/helpers';
 import { useLanguage } from '../context/LanguageContext';
+import useHeader from '../hooks/useHeader';
 
 const FacebookIcon = ({ size = 16, className = "" }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -17,65 +18,46 @@ const InstagramIcon = ({ size = 16, className = "" }) => (
     </svg>
 );
 
-function timeAgo(dateString, t, language) {
-    const now = new Date();
-    const date = new Date(dateString);
-    const diffMs = now - date;
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
-
-    if (diffSec < 60) return t('header.time_just_now');
-    if (diffMin < 60) return t('header.time_minutes_ago', { count: diffMin });
-    if (diffHour < 24) return t('header.time_hours_ago', { count: diffHour });
-    if (diffDay < 7) return t('header.time_days_ago', { count: diffDay });
-    return date.toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-}
-
-export default function Header({ settings = {}, currentUser, cartCount, wishlistCount = 0, onOpenWishlist, searchQuery, setSearchQuery, onOpenCart, onLogoClick, onLogout, onLoginClick, onProfileClick, notifications = [], unreadCount = 0, onNotificationClick, onMarkAllRead, onDeleteNotification }) {
+export default function Header({
+    settings = {},
+    currentUser,
+    cartCount,
+    cartItems = [],
+    wishlistCount = 0,
+    onOpenWishlist,
+    searchQuery,
+    setSearchQuery,
+    onOpenCart,
+    onLogoClick,
+    onLogout,
+    onLoginClick,
+    onProfileClick,
+    notifications = [],
+    unreadCount = 0,
+    onNotificationClick,
+    onMarkAllRead,
+    onDeleteNotification
+}) {
     const { language, setLanguage, t } = useLanguage();
     const storeName = getStoreName(settings);
     const facebookLink = settings.social_facebook || '#';
     const instagramLink = settings.social_instagram || '#';
     const whatsappLink = getWhatsAppLink(settings);
 
-    const [isNotifOpen, setIsNotifOpen] = useState(false);
-    const notifRef = useRef(null);
-    const [isLangOpen, setIsLangOpen] = useState(false);
-    const langRef = useRef(null);
-
-    const [localQuery, setLocalQuery] = useState(searchQuery || '');
-
-    useEffect(() => {
-        setLocalQuery(searchQuery || '');
-    }, [searchQuery]);
-
-    const handleSearchSubmit = () => {
-        setSearchQuery(localQuery);
-    };
-
-    // Close language dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (langRef.current && !langRef.current.contains(e.target)) {
-                setIsLangOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (notifRef.current && !notifRef.current.contains(e.target)) {
-                setIsNotifOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
+    const {
+        isNotifOpen,
+        setIsNotifOpen,
+        notifRef,
+        isLangOpen,
+        setIsLangOpen,
+        langRef,
+        showCartDropdown,
+        setShowCartDropdown,
+        localQuery,
+        setLocalQuery,
+        handleSearchSubmit,
+        formatNotificationTime
+    } = useHeader({ searchQuery, setSearchQuery, language, t });
 
     const notifTypeIcon = (type) => {
         switch (type) {
@@ -107,7 +89,7 @@ export default function Header({ settings = {}, currentUser, cartCount, wishlist
                     <div className="flex items-center space-x-4">
                         {/* Notification Bell (Top Bar - Desktop) */}
                         {currentUser && (
-                            <div className="relative" ref={notifRef}>
+                            <div className="relative mr-2.5" ref={notifRef}>
                                 <button
                                     onClick={() => setIsNotifOpen(!isNotifOpen)}
                                     className="flex items-center space-x-1 hover:text-red-200 transition cursor-pointer relative"
@@ -115,7 +97,7 @@ export default function Header({ settings = {}, currentUser, cartCount, wishlist
                                     <Bell size={13} />
                                     <span>{t('header.notifications')}</span>
                                     {unreadCount > 0 && (
-                                        <span className="absolute -top-2.5 -right-3.5 bg-yellow-400 text-red-950 font-extrabold text-[9px] h-4 min-w-[16px] flex items-center justify-center rounded-full border border-red-600 px-0.5 animate-pulse">
+                                        <span className="absolute -top-1.5 -right-2 bg-yellow-400 text-red-950 font-extrabold text-[9px] h-4 min-w-[16px] flex items-center justify-center rounded-full border border-red-600 px-0.5 animate-pulse">
                                             {unreadCount > 99 ? '99+' : unreadCount}
                                         </span>
                                     )}
@@ -165,7 +147,7 @@ export default function Header({ settings = {}, currentUser, cartCount, wishlist
                                                         </div>
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-start justify-between gap-2">
-                                                                <h4 className={`text-xs font-bold leading-snug truncate ${!notif.is_read ? 'text-slate-800' : 'text-slate-500'}`}>
+                                                                 <h4 className={`text-xs font-bold leading-snug truncate ${!notif.is_read ? 'text-slate-800' : 'text-slate-500'}`}>
                                                                     {notif.title}
                                                                 </h4>
                                                                 {!notif.is_read && (
@@ -176,7 +158,7 @@ export default function Header({ settings = {}, currentUser, cartCount, wishlist
                                                                 {notif.message}
                                                             </p>
                                                             <span className="text-[10px] text-slate-300 font-medium mt-1 block">
-                                                                {timeAgo(notif.created_at, t, language)}
+                                                                {formatNotificationTime(notif.created_at)}
                                                             </span>
                                                         </div>
                                                         <button
@@ -219,14 +201,14 @@ export default function Header({ settings = {}, currentUser, cartCount, wishlist
                                         className={`w-full text-left px-3.5 py-2 hover:bg-slate-50 transition cursor-pointer flex items-center justify-between ${language === 'id' ? 'text-red-600 font-bold bg-red-50/20' : ''}`}
                                     >
                                         <span>Bahasa Indonesia</span>
-                                        {language === 'id' && <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>}
+                                        {language === 'id' && <span className="w-1.5 h-1.5 rounded-full bg-red-650"></span>}
                                     </button>
                                     <button
                                         onClick={() => { setLanguage('en'); setIsLangOpen(false); }}
                                         className={`w-full text-left px-3.5 py-2 hover:bg-slate-50 transition cursor-pointer flex items-center justify-between ${language === 'en' ? 'text-red-600 font-bold bg-red-50/20' : ''}`}
                                     >
                                         <span>English</span>
-                                        {language === 'en' && <span className="w-1.5 h-1.5 rounded-full bg-red-600"></span>}
+                                        {language === 'en' && <span className="w-1.5 h-1.5 rounded-full bg-red-650"></span>}
                                     </button>
                                 </div>
                             )}
@@ -336,6 +318,29 @@ export default function Header({ settings = {}, currentUser, cartCount, wishlist
                                 </span>
                             )}
                         </button>
+
+                        {/* Profile/Login Icon Mobile */}
+                        {currentUser ? (
+                            <button 
+                                onClick={onProfileClick} 
+                                className="relative p-2 hover:bg-white/10 rounded-full transition flex items-center justify-center"
+                                title="Buka Profil"
+                            >
+                                {currentUser.avatar ? (
+                                    <img src={currentUser.avatar} alt="" className="w-6 h-6 rounded-full border border-white/30 object-cover" />
+                                ) : (
+                                    <User className="h-6 w-6" />
+                                )}
+                            </button>
+                        ) : (
+                            <button 
+                                onClick={onLoginClick} 
+                                className="relative p-2 hover:bg-white/10 rounded-full transition flex items-center justify-center"
+                                title="Masuk"
+                            >
+                                <User className="h-6 w-6" />
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -389,19 +394,81 @@ export default function Header({ settings = {}, currentUser, cartCount, wishlist
                         )}
                     </button>
 
-                    {/* Cart Button */}
-                    <button 
-                        onClick={onOpenCart} 
-                        className="relative p-2.5 hover:bg-white/10 rounded-xl transition duration-300 group flex items-center space-x-2 border border-white/10 bg-white/5"
+                    {/* Cart Button with Hover Dropdown */}
+                    <div 
+                        className="relative"
+                        onMouseEnter={() => setShowCartDropdown(true)}
+                        onMouseLeave={() => setShowCartDropdown(false)}
                     >
-                        <ShoppingCart className="h-6 w-6 group-hover:scale-105 transition" />
-                        <span className="text-sm font-medium hidden lg:inline">{t('header.cart')}</span>
-                        {cartCount > 0 && (
-                            <span className="absolute -top-2 -right-2 bg-yellow-400 text-red-950 font-extrabold text-xs h-5 w-5 flex items-center justify-center rounded-full border-2 border-red-700 shadow-md">
-                                {cartCount}
-                            </span>
+                        <button 
+                            onClick={onOpenCart} 
+                            className="relative p-2.5 hover:bg-white/10 rounded-xl transition duration-300 group flex items-center space-x-2 border border-white/10 bg-white/5 cursor-pointer"
+                        >
+                            <ShoppingCart className="h-6 w-6 transition group-hover:scale-105" />
+                            <span className="text-sm font-medium hidden lg:inline">{t('header.cart')}</span>
+                            {cartCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-yellow-400 text-red-950 font-extrabold text-xs h-5 w-5 flex items-center justify-center rounded-full border-2 border-red-700 shadow-md">
+                                    {cartCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Cart Dropdown Preview (Shopee Style) */}
+                        {showCartDropdown && cartItems.length > 0 && (
+                            <div className="absolute right-0 top-full mt-2 w-[380px] bg-white text-slate-800 rounded-lg shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-150
+                                          before:content-[''] before:absolute before:bottom-full before:right-5 before:border-8 before:border-transparent before:border-b-white">
+                                
+                                {/* Header */}
+                                <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Baru Ditambahkan</span>
+                                    <span className="text-[10px] text-slate-450 font-bold font-mono">({cartItems.length} Produk)</span>
+                                </div>
+
+                                {/* Items list (max 5) */}
+                                <div className="divide-y divide-slate-50 max-h-[280px] overflow-y-auto">
+                                    {cartItems.slice(0, 5).map((item, i) => (
+                                        <div key={i} className="p-3.5 flex items-center gap-3 hover:bg-slate-50/50 transition">
+                                            <div className="w-11 h-11 rounded border border-slate-100 overflow-hidden bg-slate-50 shrink-0">
+                                                <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <h4 className="text-xs font-bold text-slate-800 line-clamp-1 leading-snug">
+                                                    {item.product.name}
+                                                </h4>
+                                                {item.variant && (
+                                                    <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1 py-0.2 rounded mt-0.5 inline-block">
+                                                        {item.variant}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-xs font-extrabold text-red-650 shrink-0">
+                                                {formatRupiah(item.product.price)}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Footer Action */}
+                                <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+                                    {cartItems.length > 5 && (
+                                        <span className="text-[10px] text-slate-400 font-semibold pl-1">
+                                            +{cartItems.length - 5} produk lainnya
+                                        </span>
+                                    )}
+                                    <button 
+                                        onClick={() => {
+                                            onOpenCart();
+                                            setShowCartDropdown(false);
+                                        }}
+                                        className="ml-auto bg-red-600 hover:bg-red-750 text-white font-extrabold text-xs px-4 py-2.5 rounded transition duration-200 cursor-pointer uppercase tracking-wider shadow-sm"
+                                    >
+                                        Tampilkan Keranjang Belanja
+                                    </button>
+                                </div>
+
+                            </div>
                         )}
-                    </button>
+                    </div>
                 </div>
             </div>
         </header>

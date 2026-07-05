@@ -23,11 +23,19 @@ class AuthController extends Controller
             $request->session()->regenerate();
             
             $user = Auth::user();
+
+            // Generate JWT token for modular API compatibility
+            $token = \App\Services\JwtService::encode([
+                'sub'   => $user->id,
+                'email' => $user->email,
+                'name'  => $user->name,
+            ], 86400);
             
-            // Return user details along with roles
+            // Return user details along with roles and token
             return response()->json([
                 'status' => 'success',
                 'message' => 'Login berhasil.',
+                'token' => $token,
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,

@@ -59,6 +59,11 @@ class Payment extends Model
         return $this->belongsTo(Order::class);
     }
 
+    public function histories(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PaymentHistory::class);
+    }
+
     public function isPaid(): bool
     {
         return $this->status === self::STATUS_PAID;

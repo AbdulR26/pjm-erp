@@ -1,0 +1,17 @@
+{
+  "name": "qollam/order",
+  "version": "1.0.0",
+  "description": "Qollam Order Module",
+  "autoload": {
+    "psr-4": {
+      "Qollam\\Order\\": "src/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "Qollam\\Order\\OrderServiceProvider"
+      ]
+    }
+  }
+}

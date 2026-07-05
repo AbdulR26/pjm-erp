@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin\Api;
 use App\Http\Controllers\Controller;
 use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderItem;
-use App\Models\ProductVariant;
+use Qollam\Product\Models\Product;
 use App\Models\StockMutation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -58,7 +58,7 @@ class PurchaseOrderController extends Controller
             'tax' => 'nullable|numeric|min:0',
             'shipping_cost' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.product_variant_id' => 'required|exists:product_variants,id',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
         ]);
@@ -72,7 +72,7 @@ class PurchaseOrderController extends Controller
                 $subtotal += $totalCost;
 
                 $itemsData[] = [
-                    'product_variant_id' => $item['product_variant_id'],
+                    'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
                     'quantity_received' => 0,
                     'unit_cost' => $item['unit_cost'],
@@ -107,7 +107,7 @@ class PurchaseOrderController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Purchase Order berhasil dibuat.',
-            'purchase_order' => $po->load(['supplier', 'items.variant.product']),
+            'purchase_order' => $po->load(['supplier', 'items.product']),
         ], 201);
     }
 
@@ -116,7 +116,7 @@ class PurchaseOrderController extends Controller
      */
     public function show($id)
     {
-        $po = PurchaseOrder::with(['supplier', 'creator', 'items.variant.product'])->findOrFail($id);
+        $po = PurchaseOrder::with(['supplier', 'creator', 'items.product'])->findOrFail($id);
         return response()->json($po);
     }
 
@@ -143,7 +143,7 @@ class PurchaseOrderController extends Controller
             'tax' => 'nullable|numeric|min:0',
             'shipping_cost' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
-            'items.*.product_variant_id' => 'required|exists:product_variants,id',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.unit_cost' => 'required|numeric|min:0',
         ]);
@@ -157,7 +157,7 @@ class PurchaseOrderController extends Controller
                 $subtotal += $totalCost;
 
                 $itemsData[] = [
-                    'product_variant_id' => $item['product_variant_id'],
+                    'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
                     'quantity_received' => 0,
                     'unit_cost' => $item['unit_cost'],
@@ -191,7 +191,7 @@ class PurchaseOrderController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Purchase Order berhasil diperbarui.',
-            'purchase_order' => $po->load(['supplier', 'items.variant.product']),
+            'purchase_order' => $po->load(['supplier', 'items.product']),
         ]);
     }
 
@@ -222,7 +222,7 @@ class PurchaseOrderController extends Controller
      */
     public function receive(Request $request, $id)
     {
-        $po = PurchaseOrder::with(['items.variant'])->findOrFail($id);
+        $po = PurchaseOrder::with(['items.product'])->findOrFail($id);
 
         if (in_array($po->status, ['received', 'cancelled'])) {
             return response()->json([
@@ -233,7 +233,7 @@ class PurchaseOrderController extends Controller
 
         $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.product_variant_id' => 'required|exists:product_variants,id',
+            'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity_received' => 'required|integer|min:0',
         ]);
 
@@ -241,7 +241,7 @@ class PurchaseOrderController extends Controller
             $userId = Auth::id() ?? 1;
 
             foreach ($request->items as $receivedData) {
-                $poItem = $po->items()->where('product_variant_id', $receivedData['product_variant_id'])->first();
+                $poItem = $po->items()->where('product_id', $receivedData['product_id'])->first();
                 if ($poItem) {
                     $oldReceived = $poItem->quantity_received;
                     // Cap new received to order quantity
@@ -249,16 +249,17 @@ class PurchaseOrderController extends Controller
 
                     $diff = $newReceived - $oldReceived;
                     if ($diff > 0) {
-                        $variant = $poItem->variant;
-                        $variant->increment('stock', $diff);
+                        $product = $poItem->product;
+                        $product->increment('stock', $diff);
 
                         // Log Stock Mutation
                         StockMutation::create([
-                            'product_variant_id' => $variant->id,
+                            'product_id' => $product->id,
                             'user_id' => $userId,
                             'type' => 'in',
                             'quantity' => $diff,
-                            'source' => 'purchase',
+                            'reference_type' => 'PurchaseOrder',
+                            'reference_id' => $po->id,
                             'notes' => "Terima barang PO #{$po->po_number}",
                         ]);
                     }
@@ -300,7 +301,7 @@ class PurchaseOrderController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Penerimaan barang PO berhasil disimpan.',
-            'purchase_order' => $po->fresh()->load(['supplier', 'items.variant.product']),
+            'purchase_order' => $po->fresh()->load(['supplier', 'items.product']),
         ]);
     }
 
@@ -309,14 +310,14 @@ class PurchaseOrderController extends Controller
      */
     public function printPO($id)
     {
-        $po = PurchaseOrder::with(['supplier', 'creator', 'items.variant.product'])->findOrFail($id);
+        $po = PurchaseOrder::with(['supplier', 'creator', 'items.product'])->findOrFail($id);
 
         $itemsHtml = '';
         foreach ($po->items as $index => $item) {
             $num = $index + 1;
-            $name = htmlspecialchars($item->variant->product->name ?? '-');
-            $variant = htmlspecialchars($item->variant->name ?? '-');
-            $sku = htmlspecialchars($item->variant->sku ?? '-');
+            $name = htmlspecialchars($item->product->parent->name ?? $item->product->name ?? '-');
+            $variant = $item->product->parent_id ? htmlspecialchars($item->product->name ?? '-') : '-';
+            $sku = htmlspecialchars($item->product->sku ?? '-');
             $qty = $item->quantity;
             $qtyRec = $item->quantity_received;
             $price = number_format($item->unit_cost, 0, ',', '.');

@@ -3,9 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Scaffolding\Traits\ScaffoldingModel;
 
 class Customer extends Model
 {
+    use ScaffoldingModel {
+        initializeScaffoldingModel as parentInitialize;
+    }
+
+    protected $table = 'customers';
+
     protected $fillable = [
         'name',
         'email',
@@ -18,6 +25,15 @@ class Customer extends Model
         'social_id',
         'avatar',
         'password',
+    ];
+
+    protected $hidden = [
+        'password',
+        'social_provider',
+        'social_id',
+        'avatar',
+        'latitude',
+        'longitude',
     ];
 
     public function chatMessages()
@@ -33,5 +49,10 @@ class Customer extends Model
     public function notifications()
     {
         return $this->hasMany(CustomerNotification::class)->orderBy('created_at', 'desc');
+    }
+
+    public function wishlist()
+    {
+        return $this->belongsToMany(Product::class, 'wishlists', 'customer_id', 'product_id')->withTimestamps();
     }
 }

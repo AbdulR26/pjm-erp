@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\Api\SupplierController;
 use App\Http\Controllers\Admin\Api\PurchaseOrderController;
 use App\Http\Controllers\Admin\Api\DashboardController;
 use App\Http\Controllers\CustomerAuthController;
+use App\Http\Controllers\Admin\LoginController;
 
 // Rute Halaman Depan E-Commerce (React Customer App)
 Route::get('/', function () {
@@ -59,6 +60,8 @@ Route::prefix('api')->group(function () {
     Route::post('/orders/{id}/payment', [App\Http\Controllers\PublicOrderController::class, 'getOrCreatePayment']);
     Route::get('/orders/{id}/shipment', [App\Http\Controllers\PublicOrderController::class, 'getShipmentTracking']);
     Route::post('/orders/{id}/reviews', [App\Http\Controllers\PublicOrderController::class, 'storeReview']);
+    Route::post('/reviews/{id}/like', [App\Http\Controllers\PublicReviewController::class, 'like']);
+    Route::post('/reviews/{id}/reply', [App\Http\Controllers\PublicReviewController::class, 'reply']);
     Route::post('/shipment/rates', [App\Http\Controllers\PublicOrderController::class, 'getRates']);
 
     // ── Customer Notifications ────────────────────────────────────────────────
@@ -76,6 +79,10 @@ Route::prefix('api')->group(function () {
     Route::post('/chats', [App\Http\Controllers\PublicChatController::class, 'store']);
     Route::post('/chats/read', [App\Http\Controllers\PublicChatController::class, 'read']);
     Route::post('/chats/auth', [App\Http\Controllers\PublicChatController::class, 'auth']);
+
+    // ── Customer Wishlist ──────────────────────────────────────────────────────
+    Route::get('/wishlist', [App\Http\Controllers\PublicWishlistController::class, 'index']);
+    Route::post('/wishlist', [App\Http\Controllers\PublicWishlistController::class, 'toggle']);
 });
 
 // ─── Customer Social Login ──────────────────────────────────────────────────
@@ -186,7 +193,83 @@ Route::prefix('adminv1/api')->group(function () {
     });
 });
 
-// ─── Admin SPA Fallback ──────────────────────────────────────────────────────
+// ─── Admin Web/Blade Routes ──────────────────────────────────────────────────
+Route::prefix('adminv1')->group(function () {
+    Route::get('/login', [LoginController::class, 'showLoginForm'])->name('admin.login');
+    Route::post('/login', [LoginController::class, 'login'])->name('admin.login.submit');
+    Route::post('/logout', [LoginController::class, 'logout'])->name('admin.logout');
+
+    Route::middleware('auth')->group(function () {
+        Route::get('/dashboard', function () {
+            $customerCount = \App\Models\Customer::count();
+            $userCount = \App\Models\User::count();
+            $productCount = \Qollam\Product\Models\Product::whereNull('parent_id')->count();
+            $orderCount = \App\Models\Order::count();
+            
+            $pendingOrderCount = \App\Models\Order::whereHas('status', function($q) {
+                $q->where('slug', 'pending');
+            })->count();
+            
+            $totalSales = \App\Models\Order::whereHas('status', function($q) {
+                $q->where('slug', 'completed');
+            })->sum('grand_total');
+            
+            $poCount = \App\Models\PurchaseOrder::count();
+            
+            $recentOrders = \App\Models\Order::with(['customer', 'status'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+                
+            $recentPOs = \App\Models\PurchaseOrder::with(['supplier'])
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+                
+            return view('admin.dashboard', get_defined_vars());
+        })->name('admin.dashboard');
+    });
+});
+
+Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
+    Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('admin.settings.index');
+    Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('admin.settings.update');
+    
+    // Banners management
+    Route::post('/settings/banners', [\App\Http\Controllers\Admin\SettingController::class, 'storeBanner'])->name('admin.settings.banners.store');
+    Route::post('/settings/banners/{id}/update', [\App\Http\Controllers\Admin\SettingController::class, 'updateBanner'])->name('admin.settings.banners.update');
+    Route::post('/settings/banners/{id}/delete', [\App\Http\Controllers\Admin\SettingController::class, 'deleteBanner'])->name('admin.settings.banners.delete');
+
+    // Voucher management
+    Route::get('/vouchers', [\App\Http\Controllers\Admin\VoucherController::class, 'index'])->name('admin.vouchers.index');
+    Route::match(['get', 'put'], '/vouchers/create', [\App\Http\Controllers\Admin\VoucherController::class, 'create'])->name('admin.vouchers.create');
+    Route::match(['get', 'patch'], '/vouchers/{id}/edit', [\App\Http\Controllers\Admin\VoucherController::class, 'edit'])->name('admin.vouchers.edit');
+    Route::delete('/vouchers/{id}', [\App\Http\Controllers\Admin\VoucherController::class, 'destroy'])->name('admin.vouchers.destroy');
+    Route::post('/vouchers/bulk-delete', [\App\Http\Controllers\Admin\VoucherController::class, 'bulkDelete'])->name('admin.vouchers.bulk-delete');
+
+    // Supplier management
+    Route::get('/suppliers', [\App\Http\Controllers\Admin\SupplierController::class, 'index'])->name('admin.suppliers.index');
+    Route::match(['get', 'put'], '/suppliers/create', [\App\Http\Controllers\Admin\SupplierController::class, 'create'])->name('admin.suppliers.create');
+    Route::match(['get', 'patch'], '/suppliers/{id}/edit', [\App\Http\Controllers\Admin\SupplierController::class, 'edit'])->name('admin.suppliers.edit');
+    Route::delete('/suppliers/{id}', [\App\Http\Controllers\Admin\SupplierController::class, 'destroy'])->name('admin.suppliers.destroy');
+    Route::post('/suppliers/bulk-delete', [\App\Http\Controllers\Admin\SupplierController::class, 'bulkDelete'])->name('admin.suppliers.bulk-delete');
+
+    // Purchase Order management
+    Route::get('/purchase-orders', [\App\Http\Controllers\Admin\PurchaseOrderController::class, 'index'])->name('admin.purchase-orders.index');
+    Route::match(['get', 'put'], '/purchase-orders/create', [\App\Http\Controllers\Admin\PurchaseOrderController::class, 'create'])->name('admin.purchase-orders.create');
+    Route::match(['get', 'patch'], '/purchase-orders/{id}/edit', [\App\Http\Controllers\Admin\PurchaseOrderController::class, 'edit'])->name('admin.purchase-orders.edit');
+    Route::delete('/purchase-orders/{id}', [\App\Http\Controllers\Admin\PurchaseOrderController::class, 'destroy'])->name('admin.purchase-orders.destroy');
+    Route::post('/purchase-orders/bulk-delete', [\App\Http\Controllers\Admin\PurchaseOrderController::class, 'bulkDelete'])->name('admin.purchase-orders.bulk-delete');
+
+    // User management
+    Route::get('/users', [\App\Http\Controllers\Admin\UserController::class, 'index'])->name('admin.users.index');
+    Route::match(['get', 'put'], '/users/create', [\App\Http\Controllers\Admin\UserController::class, 'create'])->name('admin.users.create');
+    Route::match(['get', 'patch'], '/users/{id}/edit', [\App\Http\Controllers\Admin\UserController::class, 'edit'])->name('admin.users.edit');
+    Route::delete('/users/{id}', [\App\Http\Controllers\Admin\UserController::class, 'destroy'])->name('admin.users.destroy');
+    Route::post('/users/bulk-delete', [\App\Http\Controllers\Admin\UserController::class, 'bulkDelete'])->name('admin.users.bulk-delete');
+});
+
+// ─── Admin SPA Fallback / Redirection ────────────────────────────────────────
 Route::get('/adminv1/{any?}', function () {
-    return view('admin');
+    return redirect()->route('admin.dashboard');
 })->where('any', '.*');

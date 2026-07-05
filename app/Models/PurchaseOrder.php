@@ -4,10 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Scaffolding\Traits\ScaffoldingModel;
 
 class PurchaseOrder extends Model
 {
     use HasFactory;
+    use ScaffoldingModel {
+        initializeScaffoldingModel as parentInitialize;
+    }
 
     protected $fillable = [
         'po_number',
@@ -44,6 +48,16 @@ class PurchaseOrder extends Model
                 $po->po_number = 'PO-' . $today . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
             }
         });
+    }
+
+    public function initializeScaffoldingModel()
+    {
+        $this->parentInitialize();
+        
+        // Disable editing specific properties in dynamic scaffolding pages if any
+        $this->fieldSet('po_number', ['required' => false]);
+        $this->fieldSet('subtotal', ['required' => false]);
+        $this->fieldSet('grand_total', ['required' => false]);
     }
 
     public function supplier()

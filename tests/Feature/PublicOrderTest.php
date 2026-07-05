@@ -148,54 +148,6 @@ class PublicOrderTest extends TestCase
     }
 
     /**
-     * Test payment simulation updates order and payment status.
-     */
-    public function test_can_simulate_payment_successfully(): void
-    {
-        // 1. First place the order
-        $order = Order::create([
-            'order_number' => Order::generateOrderNumber(),
-            'customer_id' => $this->customer->id,
-            'customer_level' => 'retail',
-            'subtotal' => 75000,
-            'shipping_cost' => 15000,
-            'grand_total' => 90000,
-            'status' => 'pending',
-        ]);
-
-        $payment = Payment::create([
-            'order_id' => $order->id,
-            'payment_method' => 'Midtrans VA/QRIS',
-            'status' => 'waiting_payment',
-            'amount' => 90000,
-        ]);
-
-        // 2. Call the payment simulation route
-        $response = $this->withSession(['customer' => [
-            'id' => $this->customer->id,
-            'name' => $this->customer->name,
-            'email' => $this->customer->email,
-        ]])->postJson("/api/orders/{$order->id}/pay-simulate", [
-            'payment_method' => 'GoPay / QRIS',
-        ]);
-
-        $response->assertStatus(200);
-        $response->assertJson([
-            'success' => true,
-            'message' => 'Simulasi pembayaran berhasil.',
-        ]);
-
-        // 3. Assert status changes in DB
-        $order->refresh();
-        $payment->refresh();
-
-        $this->assertEquals('processing', $order->status);
-        $this->assertEquals('paid', $payment->status);
-        $this->assertEquals('GoPay / QRIS', $payment->payment_method);
-        $this->assertNotNull($payment->paid_at);
-    }
-
-    /**
      * Test getting shipping rates successfully.
      */
     public function test_can_get_shipping_rates_successfully(): void

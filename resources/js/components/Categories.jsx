@@ -60,18 +60,10 @@ export default function Categories({ categories = [], selectedCategory, setSelec
                 </h3>
             </div>
 
-            {/* Horizontal scroll track on mobile, Grid on desktop */}
+            {/* Responsive Grid layout for mobile (4 cols) and desktop (8 cols) */}
             <div 
-                className="flex md:grid md:grid-cols-8 gap-3 md:gap-4 overflow-x-auto md:overflow-x-visible pb-2 md:pb-0 scroll-smooth snap-x"
-                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                className="grid grid-cols-4 md:grid-cols-8 gap-y-4 gap-x-2 md:gap-4"
             >
-                {/* CSS to hide webkit scrollbar */}
-                <style dangerouslySetInnerHTML={{__html: `
-                    div::-webkit-scrollbar {
-                        display: none;
-                    }
-                `}} />
-
                 {displayCategories.map((cat) => {
                     const IconComponent = cat.icon;
                     const isSelected = selectedCategory === cat.name;
@@ -80,7 +72,7 @@ export default function Categories({ categories = [], selectedCategory, setSelec
                         <button
                             key={cat.name}
                             onClick={() => setSelectedCategory(cat.name)}
-                            className="flex-none w-[78px] md:w-auto snap-start flex flex-col items-center justify-center group focus:outline-hidden cursor-pointer"
+                            className="w-full flex flex-col items-center justify-start group focus:outline-hidden cursor-pointer"
                         >
                             {/* Circular Icon Box (Shopee/Tokopedia Style) */}
                             <div className={`h-12 w-12 md:h-14 md:w-14 rounded-full flex items-center justify-center transition-all duration-300 ${cat.bg} ${cat.text} ${
@@ -91,14 +83,16 @@ export default function Categories({ categories = [], selectedCategory, setSelec
                                 <IconComponent className="h-5.5 w-5.5 md:h-6 md:w-6 transition-transform group-hover:scale-105" />
                             </div>
 
-                            {/* Label */}
-                            <span className={`text-[9px] md:text-xs text-center mt-2 leading-tight transition-colors duration-200 font-semibold px-1 truncate w-full ${
-                                isSelected 
-                                    ? 'text-red-650 font-bold' 
-                                    : 'text-slate-650 group-hover:text-red-500'
-                            }`}>
-                                {cat.label}
-                            </span>
+                            {/* Label Wrapper with Fixed Height for Uniform Alignment */}
+                            <div className="w-full h-8 mt-2 flex items-start justify-center overflow-hidden">
+                                <span className={`text-[10px] md:text-xs text-center leading-tight transition-colors duration-200 font-semibold px-0.5 line-clamp-2 ${
+                                    isSelected 
+                                        ? 'text-red-650 font-bold' 
+                                        : 'text-slate-655 group-hover:text-red-500'
+                                }`}>
+                                    {cat.label}
+                                </span>
+                            </div>
                         </button>
                     );
                 })}
