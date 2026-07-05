@@ -132,43 +132,47 @@ class SettingController extends Controller
         Setting::set('biteship_shipper_phone', $request->biteship_shipper_phone);
         Setting::set('biteship_shipper_address', $request->biteship_shipper_address);
 
+        // Helper to delete from public/r2 safely
+        $deleteOldFile = function ($path) {
+            if ($path && !filter_var($path, FILTER_VALIDATE_URL)) {
+                $cleanPath = str_replace('/storage/', '', $path);
+                if (Storage::disk('public')->exists($cleanPath)) {
+                    Storage::disk('public')->delete($cleanPath);
+                } else {
+                    Storage::disk('r2')->delete($cleanPath);
+                }
+            }
+        };
+
         // Handle logo file upload
         if ($request->hasFile('logo')) {
             $oldLogo = Setting::get('logo');
-            if ($oldLogo) {
-                Storage::disk('public')->delete($oldLogo);
-            }
-            $logoPath = $request->file('logo')->store('settings', 'public');
+            $deleteOldFile($oldLogo);
+            $logoPath = $request->file('logo')->store('settings', 'r2');
             Setting::set('logo', $logoPath);
         }
 
         // Handle favicon upload
         if ($request->hasFile('logo_favicon')) {
             $oldFavicon = Setting::get('logo_favicon');
-            if ($oldFavicon) {
-                Storage::disk('public')->delete($oldFavicon);
-            }
-            $faviconPath = $request->file('logo_favicon')->store('settings', 'public');
+            $deleteOldFile($oldFavicon);
+            $faviconPath = $request->file('logo_favicon')->store('settings', 'r2');
             Setting::set('logo_favicon', $faviconPath);
         }
 
         // Handle banner 1 image upload
         if ($request->hasFile('side_banner_1_image')) {
             $oldImg = Setting::get('side_banner_1_image');
-            if ($oldImg && !filter_var($oldImg, FILTER_VALIDATE_URL)) {
-                Storage::disk('public')->delete($oldImg);
-            }
-            $banner1Path = $request->file('side_banner_1_image')->store('settings', 'public');
+            $deleteOldFile($oldImg);
+            $banner1Path = $request->file('side_banner_1_image')->store('settings', 'r2');
             Setting::set('side_banner_1_image', $banner1Path);
         }
 
         // Handle banner 2 image upload
         if ($request->hasFile('side_banner_2_image')) {
             $oldImg = Setting::get('side_banner_2_image');
-            if ($oldImg && !filter_var($oldImg, FILTER_VALIDATE_URL)) {
-                Storage::disk('public')->delete($oldImg);
-            }
-            $banner2Path = $request->file('side_banner_2_image')->store('settings', 'public');
+            $deleteOldFile($oldImg);
+            $banner2Path = $request->file('side_banner_2_image')->store('settings', 'r2');
             Setting::set('side_banner_2_image', $banner2Path);
         }
 
@@ -190,14 +194,15 @@ class SettingController extends Controller
             'order' => 'integer',
         ]);
 
-        $imagePath = $request->file('image')->store('uploads/banners', 'public');
+        $imagePath = $request->file('image')->store('uploads/banners', 'r2');
+        $imageUrl = Storage::disk('r2')->url($imagePath);
         
         Banner::create([
             'title' => $request->title,
             'subtitle' => $request->subtitle,
             'badge' => $request->badge,
             'button_text' => $request->button_text,
-            'image' => '/storage/' . $imagePath,
+            'image' => $imageUrl,
             'link' => $request->link,
             'order' => $request->order ?? 0,
             'is_active' => $request->has('is_active') ? true : false,
@@ -236,10 +241,16 @@ class SettingController extends Controller
         if ($request->hasFile('image')) {
             // Delete old file
             $oldPath = str_replace('/storage/', '', $banner->image);
-            Storage::disk('public')->delete($oldPath);
+            if (Storage::disk('public')->exists($oldPath)) {
+                Storage::disk('public')->delete($oldPath);
+            } else {
+                $parsed = parse_url($banner->image);
+                $r2Path = ltrim($parsed['path'] ?? '', '/');
+                Storage::disk('r2')->delete($r2Path);
+            }
 
-            $imagePath = $request->file('image')->store('uploads/banners', 'public');
-            $data['image'] = '/storage/' . $imagePath;
+            $imagePath = $request->file('image')->store('uploads/banners', 'r2');
+            $data['image'] = Storage::disk('r2')->url($imagePath);
         }
 
         $banner->update($data);
@@ -256,7 +267,13 @@ class SettingController extends Controller
 
         // Delete file
         $oldPath = str_replace('/storage/', '', $banner->image);
-        Storage::disk('public')->delete($oldPath);
+        if (Storage::disk('public')->exists($oldPath)) {
+            Storage::disk('public')->delete($oldPath);
+        } else {
+            $parsed = parse_url($banner->image);
+            $r2Path = ltrim($parsed['path'] ?? '', '/');
+            Storage::disk('r2')->delete($r2Path);
+        }
 
         $banner->delete();
 

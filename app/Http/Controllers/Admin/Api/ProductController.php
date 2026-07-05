@@ -491,12 +491,11 @@ class ProductController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            // Store in storage/app/public/uploads/products
-            $path = $file->store('uploads/products', 'public');
+            $path = $file->store('uploads/products', 'r2');
             
             return response()->json([
                 'status' => 'success',
-                'url' => '/storage/' . $path
+                'url' => \Storage::disk('r2')->url($path)
             ]);
         }
 

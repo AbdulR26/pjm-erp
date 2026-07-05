@@ -792,7 +792,7 @@ class PublicOrderController extends Controller
         // Handle photo upload
         $photoPath = null;
         if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('reviews', 'public');
+            $photoPath = $request->file('photo')->store('reviews', 'r2');
         }
 
         $review = \App\Models\ProductReview::create([

@@ -60,11 +60,27 @@ class ProductReview extends Model
         if (empty($paths)) {
             return [];
         }
+        
         // Legacy: single string stored as non-JSON
         if (is_string($paths)) {
-            return [asset('storage/' . $paths)];
+            if (filter_var($paths, FILTER_VALIDATE_URL)) {
+                return [$paths];
+            }
+            if (\Storage::disk('public')->exists($paths)) {
+                return [asset('storage/' . $paths)];
+            }
+            return [\Storage::disk('r2')->url($paths)];
         }
-        return collect($paths)->map(fn($p) => asset('storage/' . $p))->toArray();
+        
+        return collect($paths)->map(function($p) {
+            if (filter_var($p, FILTER_VALIDATE_URL)) {
+                return $p;
+            }
+            if (\Storage::disk('public')->exists($p)) {
+                return asset('storage/' . $p);
+            }
+            return \Storage::disk('r2')->url($p);
+        })->toArray();
     }
 
     /**

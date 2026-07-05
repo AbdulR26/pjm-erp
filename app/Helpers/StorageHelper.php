@@ -27,10 +27,18 @@ class StorageHelper
 
         // If it already points to the storage folder
         if (str_starts_with($path, 'storage/')) {
-            return asset($path);
+            $localPath = str_replace('storage/', '', $path);
+            if (Storage::disk('public')->exists($localPath)) {
+                return asset($path);
+            }
+            return Storage::disk('r2')->url($localPath);
         }
 
-        // Default to Laravel's public disk URL
-        return Storage::disk('public')->url($path);
+        // Default to Laravel's public disk URL if exists, otherwise fallback to r2
+        if (Storage::disk('public')->exists($path)) {
+            return Storage::disk('public')->url($path);
+        }
+
+        return Storage::disk('r2')->url($path);
     }
 }

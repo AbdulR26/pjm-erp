@@ -82,12 +82,11 @@ class BannerController extends Controller
 
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            // Store in storage/app/public/uploads/banners
-            $path = $file->store('uploads/banners', 'public');
+            $path = $file->store('uploads/banners', 'r2');
             
             return response()->json([
                 'status' => 'success',
-                'url' => '/storage/' . $path
+                'url' => \Storage::disk('r2')->url($path)
             ]);
         }
 
