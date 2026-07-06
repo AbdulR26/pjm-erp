@@ -143,6 +143,12 @@ class MidtransService
             ];
         }
 
+        // Filter enabled payment methods based on DB status
+        $enabledPayments = \App\Models\PaymentMethod::where('is_active', true)->pluck('code')->toArray();
+        if (!empty($enabledPayments)) {
+            $params['enabled_payments'] = $enabledPayments;
+        }
+
         try {
             $response = Http::withHeaders($this->getHeaders())
                 ->post($this->snapBaseUrl . '/transactions', $params);

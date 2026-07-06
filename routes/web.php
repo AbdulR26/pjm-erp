@@ -240,6 +240,25 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
     Route::post('/settings/banners/{id}/update', [\App\Http\Controllers\Admin\SettingController::class, 'updateBanner'])->name('admin.settings.banners.update');
     Route::post('/settings/banners/{id}/delete', [\App\Http\Controllers\Admin\SettingController::class, 'deleteBanner'])->name('admin.settings.banners.delete');
 
+    // Courier management
+    Route::post('/settings/couriers/sync', [\App\Http\Controllers\Admin\SettingController::class, 'syncCouriers'])->name('admin.settings.couriers.sync');
+    Route::post('/settings/couriers/{id}/toggle', [\App\Http\Controllers\Admin\SettingController::class, 'toggleCourier'])->name('admin.settings.couriers.toggle');
+
+    // Payment Method management
+    Route::post('/settings/payments/{id}/toggle', [\App\Http\Controllers\Admin\SettingController::class, 'togglePaymentMethod'])->name('admin.settings.payments.toggle');
+
+    // Review Management
+    Route::get('/reviews', [\App\Http\Controllers\Admin\ReviewController::class, 'index'])->name('admin.reviews.index');
+    Route::post('/reviews/{id}/toggle', [\App\Http\Controllers\Admin\ReviewController::class, 'toggleVisibility'])->name('admin.reviews.toggle');
+    Route::post('/reviews/{id}/reply', [\App\Http\Controllers\Admin\ReviewController::class, 'reply'])->name('admin.reviews.reply');
+    Route::delete('/reviews/{id}', [\App\Http\Controllers\Admin\ReviewController::class, 'destroy'])->name('admin.reviews.destroy');
+
+    // Stock Management
+    Route::get('/stock', [\App\Http\Controllers\Admin\StockManagementController::class, 'index'])->name('admin.stock.index');
+    Route::get('/stock/mutations', [\App\Http\Controllers\Admin\StockManagementController::class, 'mutations'])->name('admin.stock.mutations');
+    Route::post('/stock/adjust', [\App\Http\Controllers\Admin\StockManagementController::class, 'adjust'])->name('admin.stock.adjust');
+    Route::post('/stock/correct', [\App\Http\Controllers\Admin\StockManagementController::class, 'correct'])->name('admin.stock.correct');
+
     // Voucher management
     Route::get('/vouchers', [\App\Http\Controllers\Admin\VoucherController::class, 'index'])->name('admin.vouchers.index');
     Route::match(['get', 'put'], '/vouchers/create', [\App\Http\Controllers\Admin\VoucherController::class, 'create'])->name('admin.vouchers.create');

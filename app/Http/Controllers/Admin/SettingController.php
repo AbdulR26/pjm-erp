@@ -17,6 +17,8 @@ class SettingController extends Controller
     {
         $settings = Setting::all()->pluck('value', 'key');
         $banners = Banner::orderBy('order')->get();
+        $couriers = \App\Models\Courier::all();
+        $paymentMethods = \App\Models\PaymentMethod::all();
         
         $title = 'Pengaturan Aplikasi';
         $breadcrumbs = [
@@ -278,5 +280,113 @@ class SettingController extends Controller
         $banner->delete();
 
         return redirect()->back()->with('success', 'Banner slider berhasil dihapus.');
+    }
+
+    /**
+     * Sync couriers from Biteship API.
+     */
+    public function syncCouriers(\App\Services\BiteshipService $biteshipService)
+    {
+        try {
+            $biteshipCouriers = $biteshipService->getAvailableCouriers();
+            
+            if (empty($biteshipCouriers)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tidak ada data kurir yang dikembalikan dari Biteship.'
+                ], 422);
+            }
+
+            // Group by courier_code
+            $groupedCouriers = [];
+            foreach ($biteshipCouriers as $item) {
+                $code = $item['courier_code'] ?? null;
+                $name = $item['courier_name'] ?? null;
+                $serviceName = $item['courier_service_name'] ?? '';
+
+                if (!$code || !$name) {
+                    continue;
+                }
+
+                if (!isset($groupedCouriers[$code])) {
+                    $groupedCouriers[$code] = [
+                        'code' => $code,
+                        'name' => $name,
+                        'services' => []
+                    ];
+                }
+
+                if (!empty($serviceName) && !in_array($serviceName, $groupedCouriers[$code]['services'])) {
+                    $groupedCouriers[$code]['services'][] = $serviceName;
+                }
+            }
+
+            // Update or create in database
+            foreach ($groupedCouriers as $code => $data) {
+                \App\Models\Courier::updateOrCreate(
+                    ['code' => $code],
+                    [
+                        'name' => $data['name'],
+                        'service_names' => implode(', ', $data['services']),
+                    ]
+                );
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Berhasil menyinkronkan data kurir dari Biteship.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal sinkronisasi kurir: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle active status of a courier.
+     */
+    public function toggleCourier($id)
+    {
+        try {
+            $courier = \App\Models\Courier::findOrFail($id);
+            $courier->is_active = !$courier->is_active;
+            $courier->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Kurir {$courier->name} berhasil " . ($courier->is_active ? 'diaktifkan' : 'dinonaktifkan') . ".",
+                'is_active' => $courier->is_active
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengubah status kurir: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Toggle active status of a Midtrans payment method.
+     */
+    public function togglePaymentMethod($id)
+    {
+        try {
+            $paymentMethod = \App\Models\PaymentMethod::findOrFail($id);
+            $paymentMethod->is_active = !$paymentMethod->is_active;
+            $paymentMethod->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Metode pembayaran {$paymentMethod->name} berhasil " . ($paymentMethod->is_active ? 'diaktifkan' : 'dinonaktifkan') . ".",
+                'is_active' => $paymentMethod->is_active
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengubah status metode pembayaran: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

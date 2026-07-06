@@ -42,10 +42,31 @@ class BiteshipService
      * @return array
      * @throws \Exception
      */
-    public function getRates(array $destination, array $items, ?string $couriers = 'jne,jnt,sicepat'): array
+    public function getRates(array $destination, array $items, ?string $couriers = null): array
     {
         if (empty($this->apiKey)) {
             throw new \Exception('Biteship API Key is not configured.');
+        }
+
+        // Resolve couriers list based on active status in database
+        $activeCouriers = \App\Models\Courier::where('is_active', true)->pluck('code')->toArray();
+        if (!empty($activeCouriers)) {
+            if (empty($couriers)) {
+                $couriers = implode(',', $activeCouriers);
+            } else {
+                $passedCouriers = explode(',', $couriers);
+                $filteredCouriers = array_intersect($passedCouriers, $activeCouriers);
+                if (!empty($filteredCouriers)) {
+                    $couriers = implode(',', $filteredCouriers);
+                } else {
+                    $couriers = 'none';
+                }
+            }
+        } else {
+            // Fallback if table is empty (e.g. before first sync)
+            if (empty($couriers)) {
+                $couriers = 'jne,jnt,sicepat,anteraja,ide';
+            }
         }
 
         // Format items for Biteship
@@ -297,6 +318,38 @@ class BiteshipService
         } catch (\Exception $e) {
             Log::error('Biteship Cancel Shipment Exception', [
                 'biteship_order_id' => $biteshipOrderId,
+                'message' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Get list of couriers from Biteship.
+     *
+     * @return array
+     * @throws \Exception
+     */
+    public function getAvailableCouriers(): array
+    {
+        if (empty($this->apiKey)) {
+            throw new \Exception('Biteship API Key is not configured.');
+        }
+
+        try {
+            $response = Http::withHeaders($this->getHeaders())
+                ->get($this->baseUrl . '/v1/couriers');
+
+            if ($response->failed()) {
+                Log::error('Biteship Couriers Error', [
+                    'response' => $response->body(),
+                ]);
+                throw new \Exception('Biteship couriers request failed: ' . $response->json('error', $response->body()));
+            }
+
+            return $response->json('couriers') ?? [];
+        } catch (\Exception $e) {
+            Log::error('Biteship Couriers Exception', [
                 'message' => $e->getMessage(),
             ]);
             throw $e;

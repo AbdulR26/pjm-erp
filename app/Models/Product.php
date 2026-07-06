@@ -105,4 +105,9 @@ class Product extends Model
         }
         return null;
     }
+
+    public function stockMutations()
+    {
+        return $this->hasMany(StockMutation::class, 'product_id');
+    }
 }

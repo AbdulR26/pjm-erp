@@ -461,6 +461,65 @@
                                 <button type="submit" class="btn btn-primary font-weight-bold"><i data-feather="save" class="mr-25"></i> Simpan Midtrans</button>
                             </div>
                         </form>
+
+                        <!-- Separator -->
+                        <div class="divider divider-primary mt-3">
+                            <div class="divider-text font-weight-bold">Manajemen Metode Pembayaran Midtrans</div>
+                        </div>
+
+                        <!-- Payment Methods Management Card -->
+                        <div class="card mt-2 border">
+                            <div class="card-header border-bottom">
+                                <h5 class="card-title font-weight-bold text-primary mb-0">
+                                    <i data-feather="credit-card" class="mr-50"></i>Daftar Metode Pembayaran Midtrans
+                                </h5>
+                                <p class="text-muted small mb-0">Tentukan opsi pembayaran apa saja yang muncul pada pop-up Snap Midtrans saat pelanggan membayar.</p>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th width="20%">Kategori</th>
+                                                <th width="25%">Kode Metode</th>
+                                                <th>Nama Metode Pembayaran</th>
+                                                <th width="15%" class="text-center">Status Aktif</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @php
+                                                $sortedMethods = collect($paymentMethods ?? [])->groupBy('category');
+                                            @endphp
+                                            @forelse($sortedMethods as $category => $methods)
+                                                @foreach($methods as $index => $method)
+                                                    <tr>
+                                                        @if($index === 0)
+                                                            <td rowspan="{{ count($methods) }}" class="align-middle font-weight-bold text-primary bg-light" style="border-right: 1px solid #ebe9f1;">
+                                                                {{ $category }}
+                                                            </td>
+                                                        @endif
+                                                        <td class="font-weight-bold text-monospace">{{ $method->code }}</td>
+                                                        <td>{{ $method->name }}</td>
+                                                        <td class="text-center">
+                                                            <div class="custom-control custom-switch custom-switch-primary d-inline-flex justify-content-center">
+                                                                <input type="checkbox" class="custom-control-input payment-toggle" id="payment-{{ $method->id }}" data-id="{{ $method->id }}" {{ $method->is_active ? 'checked' : '' }}>
+                                                                <label class="custom-control-label" for="payment-{{ $method->id }}"></label>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                @endforeach
+                                            @empty
+                                                <tr>
+                                                    <td colspan="4" class="text-center py-2 text-muted">
+                                                        <i data-feather="alert-circle" class="mr-25"></i> Belum ada data metode pembayaran.
+                                                    </td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- TAB 6: Biteship Logistic Integration -->
@@ -515,6 +574,63 @@
                                 <button type="submit" class="btn btn-primary font-weight-bold"><i data-feather="save" class="mr-25"></i> Simpan Biteship</button>
                             </div>
                         </form>
+
+                        <!-- Separator -->
+                        <div class="divider divider-primary mt-3">
+                            <div class="divider-text font-weight-bold">Manajemen Kurir Biteship</div>
+                        </div>
+
+                        <!-- Courier Management Card -->
+                        <div class="card mt-2 border">
+                            <div class="card-header d-flex justify-content-between align-items-center flex-wrap border-bottom">
+                                <div>
+                                    <h5 class="card-title font-weight-bold text-primary mb-0">
+                                        <i data-feather="truck" class="mr-50"></i>Daftar Kurir Biteship
+                                    </h5>
+                                    <p class="text-muted small mb-0">Aktifkan atau nonaktifkan kurir ekspedisi yang akan digunakan saat checkout pelanggan.</p>
+                                </div>
+                                <button type="button" class="btn btn-outline-primary font-weight-bold mt-50 mt-sm-0" id="btn-sync-couriers">
+                                    <i data-feather="refresh-cw" class="mr-25"></i> Tarik Kurir dari Biteship
+                                </button>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th width="15%">Kode Kurir</th>
+                                                <th width="25%">Nama Kurir</th>
+                                                <th>Layanan yang Tersedia</th>
+                                                <th width="15%" class="text-center">Status Aktif</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="couriers-table-body">
+                                            @forelse($couriers ?? [] as $courier)
+                                                <tr>
+                                                    <td class="font-weight-bold text-uppercase">{{ $courier->code }}</td>
+                                                    <td>{{ $courier->name }}</td>
+                                                    <td>
+                                                        <small class="text-muted">{{ $courier->service_names ?: '-' }}</small>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <div class="custom-control custom-switch custom-switch-primary d-inline-flex justify-content-center">
+                                                            <input type="checkbox" class="custom-control-input courier-toggle" id="courier-{{ $courier->id }}" data-id="{{ $courier->id }}" {{ $courier->is_active ? 'checked' : '' }}>
+                                                            <label class="custom-control-label" for="courier-{{ $courier->id }}"></label>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @empty
+                                                <tr>
+                                                    <td colspan="4" class="text-center py-2 text-muted">
+                                                        <i data-feather="alert-circle" class="mr-25"></i> Belum ada data kurir. Silakan klik tombol <strong>Tarik Kurir dari Biteship</strong> di atas.
+                                                    </td>
+                                                </tr>
+                                            @endforelse
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -721,6 +837,150 @@
             }).then(function (result) {
                 if (result.value) {
                     form.submit();
+                }
+            });
+        });
+
+        // Sync Couriers from Biteship
+        $('#btn-sync-couriers').on('click', function() {
+            var btn = $(this);
+            btn.prop('disabled', true);
+            
+            Swal.fire({
+                title: 'Sinkronisasi Kurir...',
+                text: 'Sedang menarik data kurir dari Biteship API. Harap tunggu.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            $.ajax({
+                url: "{{ route('admin.settings.couriers.sync') }}",
+                type: "POST",
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    Swal.close();
+                    if (response.success) {
+                        Swal.fire({
+                            title: 'Berhasil!',
+                            text: response.message,
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        }).then(function() {
+                            window.location.reload();
+                        });
+                    } else {
+                        btn.prop('disabled', false);
+                        Swal.fire('Gagal!', response.message || 'Terjadi kesalahan.', 'error');
+                    }
+                },
+                error: function(xhr) {
+                    Swal.close();
+                    btn.prop('disabled', false);
+                    var errMsg = 'Terjadi kesalahan sistem.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire('Error!', errMsg, 'error');
+                }
+            });
+        });
+
+        // Toggle Courier Status
+        $(document).on('change', '.courier-toggle', function() {
+            var checkbox = $(this);
+            var id = checkbox.data('id');
+            var isChecked = checkbox.prop('checked');
+            
+            checkbox.prop('disabled', true);
+
+            $.ajax({
+                url: "{{ url('/admin/settings/couriers') }}/" + id + "/toggle",
+                type: "POST",
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    checkbox.prop('disabled', false);
+                    if (response.success) {
+                        // Toast success message
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            timerProgressBar: true
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: response.message
+                        });
+                    } else {
+                        // Revert checkbox state
+                        checkbox.prop('checked', !isChecked);
+                        Swal.fire('Gagal!', response.message || 'Gagal mengubah status kurir.', 'error');
+                    }
+                },
+                error: function(xhr) {
+                    checkbox.prop('disabled', false);
+                    checkbox.prop('checked', !isChecked);
+                    var errMsg = 'Gagal mengubah status kurir.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire('Error!', errMsg, 'error');
+                }
+            });
+        });
+
+        // Toggle Payment Method Status
+        $(document).on('change', '.payment-toggle', function() {
+            var checkbox = $(this);
+            var id = checkbox.data('id');
+            var isChecked = checkbox.prop('checked');
+            
+            checkbox.prop('disabled', true);
+
+            $.ajax({
+                url: "{{ url('/admin/settings/payments') }}/" + id + "/toggle",
+                type: "POST",
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    checkbox.prop('disabled', false);
+                    if (response.success) {
+                        // Toast success message
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 2000,
+                            timerProgressBar: true
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: response.message
+                        });
+                    } else {
+                        // Revert checkbox state
+                        checkbox.prop('checked', !isChecked);
+                        Swal.fire('Gagal!', response.message || 'Gagal mengubah status metode pembayaran.', 'error');
+                    }
+                },
+                error: function(xhr) {
+                    checkbox.prop('disabled', false);
+                    checkbox.prop('checked', !isChecked);
+                    var errMsg = 'Gagal mengubah status metode pembayaran.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire('Error!', errMsg, 'error');
                 }
             });
         });

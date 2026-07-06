@@ -42,7 +42,7 @@
             </li>
 
             <!-- Products -->
-            <li class="nav-item has-sub {{ request()->is('admin/products*') || request()->is('admin/product-categories*') ? 'open sidebar-group-active' : '' }}">
+            <li class="nav-item has-sub {{ request()->is('admin/products*') || request()->is('admin/product-categories*') || request()->is('admin/reviews*') ? 'open sidebar-group-active' : '' }}">
                 <a class="d-flex align-items-center" href="#">
                     <i data-feather="package"></i>
                     <span class="menu-title text-truncate">Product</span>
@@ -60,7 +60,21 @@
                             <span class="menu-item text-truncate">Category</span>
                         </a>
                     </li>
+                    <li class="{{ request()->is('admin/reviews*') ? 'active' : '' }}">
+                        <a class="d-flex align-items-center" href="{{ route('admin.reviews.index') }}">
+                            <i data-feather="star"></i>
+                            <span class="menu-item text-truncate">Reviews</span>
+                        </a>
+                    </li>
                 </ul>
+            </li>
+
+            <!-- Stock Management -->
+            <li class="nav-item {{ request()->is('admin/stock*') ? 'active' : '' }}">
+                <a class="d-flex align-items-center" href="{{ route('admin.stock.index') }}">
+                    <i data-feather="database"></i>
+                    <span class="menu-title text-truncate">Stock Management</span>
+                </a>
             </li>
 
             <!-- Orders -->
