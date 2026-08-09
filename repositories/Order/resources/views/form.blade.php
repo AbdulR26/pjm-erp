@@ -25,8 +25,9 @@
                     <div class="d-flex align-items-center mt-1 mt-sm-0">
                         @if($order->exists)
                             @php
-                                $slug = $order->status->slug ?? 'pending';
-                                $name = $order->status->name ?? 'Pending';
+                                $statusObj = $order->statusRelation ?: \App\Models\OrderStatus::find($order->status_id);
+                                $slug = $statusObj?->slug ?? 'pending';
+                                $name = $statusObj?->name ?? 'Pending';
                                 $badgeClass = 'secondary';
                                 if ($slug === 'processing') $badgeClass = 'info';
                                 elseif ($slug === 'shipping') $badgeClass = 'warning';

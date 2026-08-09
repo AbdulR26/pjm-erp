@@ -16,6 +16,8 @@ class Order extends Model
 
     protected $fillable = [
         'order_number',
+        'source',
+        'ecommerce_platform',
         'customer_id',
         'status_id',
         'voucher_id',
@@ -72,6 +74,11 @@ class Order extends Model
         return $this->belongsTo(OrderStatus::class, 'status_id');
     }
 
+    public function statusRelation(): BelongsTo
+    {
+        return $this->belongsTo(OrderStatus::class, 'status_id');
+    }
+
     public function histories(): HasMany
     {
         return $this->hasMany(OrderHistory::class);
@@ -95,6 +102,11 @@ class Order extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(ProductReview::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(OrderReturn::class);
     }
 
     /**

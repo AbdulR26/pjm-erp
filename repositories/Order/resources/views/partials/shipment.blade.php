@@ -76,7 +76,7 @@
                     @endif
                 @endif
 
-                <h5 class="font-weight-bold mb-2 text-dark pt-1 border-top"><i data-feather="edit-2" class="text-primary mr-50"></i> Kelola Resi Manual (Jika Diperlukan)</h5>
+                <h5 class="font-weight-bold mb-2 text-dark pt-1 border-top"><i data-feather="edit-2" class="text-primary mr-50"></i> Kelola Detail Pengiriman & Resi</h5>
                 <div class="row">
                     <div class="col-md-6 form-group-premium">
                         <label class="form-label-premium" for="shipment-waybill">Nomor Resi (Waybill ID)</label>
@@ -93,34 +93,32 @@
                         </select>
                     </div>
                 </div>
-                
-                <button type="submit" class="btn btn-sm btn-primary mb-2">
-                    Simpan Resi & Status
-                </button>
 
-                <h5 class="font-weight-bold mb-2 text-dark pt-1 border-top"><i data-feather="map-pin" class="text-primary mr-50"></i> Alamat Tujuan Pengiriman</h5>
-                <table class="table table-borderless table-sm">
-                    <tr>
-                        <td class="font-weight-bold text-muted pl-0" style="width: 150px;">Nama Penerima</td>
-                        <td>: <strong>{{ $order->shipment->destination_contact_name }}</strong></td>
-                    </tr>
-                    <tr>
-                        <td class="font-weight-bold text-muted pl-0">No. Telepon Penerima</td>
-                        <td>: {{ $order->shipment->destination_contact_phone }}</td>
-                    </tr>
-                    <tr>
-                        <td class="font-weight-bold text-muted pl-0">Alamat Lengkap</td>
-                        <td>: {{ $order->shipment->destination_address }}</td>
-                    </tr>
-                    <tr>
-                        <td class="font-weight-bold text-muted pl-0">Kode Pos / Koordinat</td>
-                        <td>: {{ $order->shipment->destination_postal_code ?: '-' }} 
-                            @if($order->shipment->destination_latitude && $order->shipment->destination_longitude)
-                                <br><span class="text-muted small">({{ $order->shipment->destination_latitude }}, {{ $order->shipment->destination_longitude }})</span>
-                            @endif
-                        </td>
-                    </tr>
-                </table>
+                <div class="row">
+                    <div class="col-md-6 form-group-premium">
+                        <label class="form-label-premium" for="dest-contact-name">Nama Penerima</label>
+                        <input type="text" name="destination_contact_name" id="dest-contact-name" value="{{ $order->shipment->destination_contact_name ?: ($order->customer?->name ?? '') }}" class="form-control-premium" placeholder="Nama penerima">
+                    </div>
+                    <div class="col-md-6 form-group-premium">
+                        <label class="form-label-premium" for="dest-contact-phone">No. Telepon Penerima</label>
+                        <input type="text" name="destination_contact_phone" id="dest-contact-phone" value="{{ $order->shipment->destination_contact_phone ?: ($order->customer?->phone ?? '') }}" class="form-control-premium" placeholder="No hp penerima">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-8 form-group-premium">
+                        <label class="form-label-premium" for="dest-address">Alamat Lengkap Tujuan</label>
+                        <input type="text" name="destination_address" id="dest-address" value="{{ $order->shipment->destination_address ?: ($order->customer?->address ?? '') }}" class="form-control-premium" placeholder="Alamat jalan/gedung">
+                    </div>
+                    <div class="col-md-4 form-group-premium">
+                        <label class="form-label-premium" for="dest-postal">Kode Pos Tujuan (5 Digit) <span class="text-danger">*</span></label>
+                        <input type="text" name="destination_postal_code" id="dest-postal" value="{{ $order->shipment->destination_postal_code ?: ($order->customer?->postal_code ?? '') }}" class="form-control-premium" placeholder="Cth: 10430" maxlength="5">
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-sm btn-primary mb-2">
+                    <i data-feather="save" class="mr-25"></i> Simpan Detail Pengiriman
+                </button>
             </div>
 
             <!-- Shipment webhook logs history -->

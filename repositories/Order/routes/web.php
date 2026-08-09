@@ -18,4 +18,10 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
     Route::post('/orders/bulk-book-shipment', 'OrderController@bulkBookShipment')->name('admin.orders.bulk-book-shipment');
     Route::get('/orders/bulk-print-labels', 'OrderController@bulkPrintLabels')->name('admin.orders.bulk-print-labels');
     Route::post('/orders/bulk-delete', 'OrderController@bulkDelete')->name('admin.orders.bulk-delete');
+
+    // Order Returns Routes
+    Route::get('/order-returns', 'AdminOrderReturnController@index')->name('admin.order-returns.index');
+    Route::get('/order-returns/{id}', 'AdminOrderReturnController@show')->name('admin.order-returns.show');
+    Route::post('/order-returns/{id}/approve', 'AdminOrderReturnController@approve')->name('admin.order-returns.approve');
+    Route::post('/order-returns/{id}/reject', 'AdminOrderReturnController@reject')->name('admin.order-returns.reject');
 });

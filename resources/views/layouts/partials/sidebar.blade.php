@@ -78,10 +78,18 @@
             </li>
 
             <!-- Orders -->
-            <li class="nav-item {{ request()->is('admin/orders*') ? 'active' : '' }}">
+            <li class="nav-item {{ request()->is('admin/orders*') && !request()->is('admin/order-returns*') ? 'active' : '' }}">
                 <a class="d-flex align-items-center" href="{{ route('admin.orders.index') }}">
                     <i data-feather="shopping-cart"></i>
                     <span class="menu-title text-truncate">Orders</span>
+                </a>
+            </li>
+
+            <!-- Retur & Refund -->
+            <li class="nav-item {{ request()->is('admin/order-returns*') ? 'active' : '' }}">
+                <a class="d-flex align-items-center" href="{{ route('admin.order-returns.index') }}">
+                    <i data-feather="rotate-ccw"></i>
+                    <span class="menu-title text-truncate">Retur & Refund</span>
                 </a>
             </li>
 

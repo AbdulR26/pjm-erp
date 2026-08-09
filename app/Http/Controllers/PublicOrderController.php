@@ -476,7 +476,7 @@ class PublicOrderController extends Controller
             return response()->json(['message' => 'Silakan login terlebih dahulu.'], 401);
         }
 
-        $orders = Order::with(['items.product.images', 'payment', 'shipment', 'reviews'])
+        $orders = Order::with(['items.product.images', 'payment', 'shipment', 'reviews', 'returns.media'])
             ->where('customer_id', $customer['id'])
             ->orderBy('created_at', 'desc')
             ->get();

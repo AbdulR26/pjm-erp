@@ -64,6 +64,12 @@ Route::prefix('api')->group(function () {
     Route::post('/reviews/{id}/reply', [App\Http\Controllers\PublicReviewController::class, 'reply']);
     Route::post('/shipment/rates', [App\Http\Controllers\PublicOrderController::class, 'getRates']);
 
+    // ── E-Commerce Order Returns ────────────────────────────────────────────────
+    Route::get('/customer/summary', [App\Http\Controllers\Api\OrderReturnCustomerController::class, 'summary']);
+    Route::post('/orders/{id}/returns', [App\Http\Controllers\Api\OrderReturnCustomerController::class, 'store']);
+    Route::get('/orders/{id}/returns', [App\Http\Controllers\Api\OrderReturnCustomerController::class, 'show']);
+    Route::post('/returns/{returnId}/input-waybill', [App\Http\Controllers\Api\OrderReturnCustomerController::class, 'inputWaybill']);
+
     // ── Customer Notifications ────────────────────────────────────────────────
     Route::get('/notifications', [App\Http\Controllers\CustomerNotificationController::class, 'index']);
     Route::post('/notifications/{id}/read', [App\Http\Controllers\CustomerNotificationController::class, 'markAsRead']);
@@ -84,6 +90,12 @@ Route::prefix('api')->group(function () {
     Route::get('/wishlist', [App\Http\Controllers\PublicWishlistController::class, 'index']);
     Route::post('/wishlist', [App\Http\Controllers\PublicWishlistController::class, 'toggle']);
 });
+
+// Direct Web Aliases for Order Returns (supports both /api/orders/{id}/returns and /orders/{id}/returns)
+Route::get('/customer/summary', [App\Http\Controllers\Api\OrderReturnCustomerController::class, 'summary']);
+Route::post('/orders/{id}/returns', [App\Http\Controllers\Api\OrderReturnCustomerController::class, 'store']);
+Route::get('/orders/{id}/returns', [App\Http\Controllers\Api\OrderReturnCustomerController::class, 'show']);
+Route::post('/returns/{returnId}/input-waybill', [App\Http\Controllers\Api\OrderReturnCustomerController::class, 'inputWaybill']);
 
 // ─── Customer Social Login ──────────────────────────────────────────────────
 Route::get('/auth/google', [CustomerAuthController::class, 'redirectToGoogle'])->name('auth.google');

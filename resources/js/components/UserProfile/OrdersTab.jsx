@@ -1,9 +1,14 @@
-import React from 'react';
-import { ClipboardList, ArrowLeft, Truck, Loader, Star, CheckCircle, Copy, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { ClipboardList, ArrowLeft, Truck, Loader, Star, CheckCircle, Copy, Check, RotateCcw } from 'lucide-react';
 import { formatRupiah, getProductImageUrl } from '../../utils/helpers';
 import useOrdersTab from '../../hooks/useOrdersTab';
+import OrderReturnModal from './OrderReturnModal';
+import OrderWaybillModal from './OrderWaybillModal';
 
 export default function OrdersTab({ currentUser, settings }) {
+    const [returnModalOrder, setReturnModalOrder] = useState(null);
+    const [waybillModalReturn, setWaybillModalReturn] = useState(null);
+
     const {
         ordersLoading,
         orderFilter,
@@ -58,6 +63,15 @@ export default function OrdersTab({ currentUser, settings }) {
                             <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${getStatusBadgeClass(selectedOrder.status)}`}>
                                 {getStatusLabel(selectedOrder.status)}
                             </span>
+                            {(selectedOrder.status === 'completed' || selectedOrder.status === 'shipping') && (
+                                <button
+                                    onClick={() => setReturnModalOrder(selectedOrder)}
+                                    className="px-3.5 py-1.5 bg-slate-100 hover:bg-orange-50 hover:text-[#ff5722] text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                                >
+                                    <RotateCcw size={14} />
+                                    <span>Ajukan Retur</span>
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -272,12 +286,58 @@ export default function OrdersTab({ currentUser, settings }) {
                                         </>
                                     )}
                                 </div>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 flex-wrap sm:flex-nowrap justify-end">
                                     {order.status === 'pending' && (
                                         <button onClick={() => handlePay(order.id)} disabled={payLoading[order.id]} className="px-4 py-2 bg-[#ff5722] text-white text-xs font-bold rounded-lg cursor-pointer">
                                             {payLoading[order.id] ? 'Memproses...' : 'Bayar Sekarang'}
                                         </button>
                                     )}
+                                    {(() => {
+                                        const activeRet = order.returns?.find(r => ['pending', 'approved', 'shipping_back', 'received_at_warehouse'].includes(r.status));
+                                        const completedRet = order.returns?.find(r => r.status === 'completed');
+
+                                        if (activeRet) {
+                                            if (activeRet.status === 'approved' || activeRet.status === 'shipping_back') {
+                                                return (
+                                                    <button
+                                                        onClick={() => setWaybillModalReturn(activeRet)}
+                                                        className="px-3.5 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1.5 transition"
+                                                    >
+                                                        <Truck size={14} />
+                                                        <span>Input Resi Retur</span>
+                                                    </button>
+                                                );
+                                            }
+                                            return (
+                                                <span className="px-3 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg text-xs font-bold flex items-center gap-1">
+                                                    <RotateCcw size={13} />
+                                                    <span>Retur Diproses</span>
+                                                </span>
+                                            );
+                                        }
+
+                                        if (completedRet) {
+                                            return (
+                                                <span className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold flex items-center gap-1">
+                                                    <CheckCircle size={13} />
+                                                    <span>Retur Selesai</span>
+                                                </span>
+                                            );
+                                        }
+
+                                        if (order.status === 'completed' || order.status === 'shipping') {
+                                            return (
+                                                <button
+                                                    onClick={() => setReturnModalOrder(order)}
+                                                    className="px-3.5 py-2 bg-slate-50 hover:bg-orange-50 hover:text-[#ff5722] text-slate-700 border border-slate-200 text-xs font-bold rounded-lg cursor-pointer flex items-center gap-1.5 transition"
+                                                >
+                                                    <RotateCcw size={14} />
+                                                    <span>Ajukan Retur</span>
+                                                </button>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                     <button onClick={() => setSelectedOrder(order)} className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg cursor-pointer">
                                         Lihat Detail
                                     </button>
@@ -287,6 +347,20 @@ export default function OrdersTab({ currentUser, settings }) {
                     ))}
                 </div>
             )}
+
+            <OrderReturnModal
+                isOpen={!!returnModalOrder}
+                onClose={() => setReturnModalOrder(null)}
+                order={returnModalOrder}
+                onSuccess={(msg) => alert(msg)}
+            />
+
+            <OrderWaybillModal
+                isOpen={!!waybillModalReturn}
+                onClose={() => setWaybillModalReturn(null)}
+                returnData={waybillModalReturn}
+                onSuccess={(msg) => alert(msg)}
+            />
         </div>
     );
 }

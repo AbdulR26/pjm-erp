@@ -131,17 +131,39 @@ class BiteshipService
 
         // Origin details (defaults to config origin if shipperDetails doesn't supply)
         $shipperName = $shipperDetails['shipper_name'] ?? config('app.name', 'Putri Jaya Mobil');
-        $shipperPhone = $shipperDetails['shipper_phone'] ?? '081234567890';
+        $shipperPhone = preg_replace('/[^0-9]/', '', (string) ($shipperDetails['shipper_phone'] ?? '081234567890'));
         $shipperEmail = $shipperDetails['shipper_email'] ?? 'admin@putrijayamobil.com';
         $originAddress = $shipperDetails['origin_address'] ?? 'Jl. Raya Putri Jaya Mobil No 1';
-        $originPostalCode = $shipperDetails['origin_postal_code'] ?? ($this->origin['postal_code'] ?? 0);
+
+        $originPostalRaw = $shipperDetails['origin_postal_code'] ?? ($this->origin['postal_code'] ?? 10430);
+        $originPostalCode = (int) preg_replace('/[^0-9]/', '', (string) $originPostalRaw);
+        if ($originPostalCode === 0) {
+            $originPostalCode = 10430;
+        }
+
         $originLat = $shipperDetails['origin_latitude'] ?? ($this->origin['latitude'] ?? 0);
         $originLng = $shipperDetails['origin_longitude'] ?? ($this->origin['longitude'] ?? 0);
 
-        // Destination details (we can extract from order address or prompt coordinates if present)
+        // Destination details (extract from shipperDetails -> shipment -> customer)
         $destinationLat = $shipperDetails['destination_latitude'] ?? ($order->shipment?->destination_latitude ?? 0);
         $destinationLng = $shipperDetails['destination_longitude'] ?? ($order->shipment?->destination_longitude ?? 0);
-        $destinationPostalCode = $shipperDetails['destination_postal_code'] ?? ($order->shipment?->destination_postal_code ?? 0);
+
+        $destPostalRaw = !empty($shipperDetails['destination_postal_code'])
+            ? $shipperDetails['destination_postal_code']
+            : (!empty($order->shipment?->destination_postal_code)
+                ? $order->shipment->destination_postal_code
+                : ($customer?->postal_code ?? ''));
+
+        $destinationPostalCode = (int) preg_replace('/[^0-9]/', '', (string) $destPostalRaw);
+
+        if (empty($destinationPostalCode) || strlen((string) $destinationPostalCode) < 5) {
+            throw new \Exception('Kode pos tujuan pengiriman (postal code) tidak valid atau belum diisi (diperlukan 5 digit angka). Silakan lengkapi Kode Pos pada detail pengiriman order.');
+        }
+
+        // Synchronize shipment destination_postal_code if missing
+        if ($order->shipment && (empty($order->shipment->destination_postal_code) || $order->shipment->destination_postal_code == 0)) {
+            $order->shipment->update(['destination_postal_code' => $destinationPostalCode]);
+        }
 
         // Parse items directly from OrderItem snapshot fields (no productVariant relationship needed)
         $items = $order->items->map(function ($item) {
@@ -161,7 +183,7 @@ class BiteshipService
             'origin_contact_name' => $shipperName,
             'origin_contact_phone' => $shipperPhone,
             'origin_address' => $originAddress,
-            'origin_postal_code' => (int) $originPostalCode,
+            'origin_postal_code' => $originPostalCode,
             'origin_coordinate' => [
                 'latitude' => (float) $originLat,
                 'longitude' => (float) $originLng,
@@ -171,14 +193,17 @@ class BiteshipService
             'destination_contact_phone' => $order->shipping_recipient_phone ?: ($order->shipment?->destination_contact_phone ?: ($customer->phone ?? '081234567890')),
             'destination_contact_email' => $customer->email ?: 'customer@email.com',
             'destination_address' => $order->shipping_address ?: ($order->shipment?->destination_address ?: ($customer->address ?? 'Alamat Penerima')),
-            'destination_postal_code' => (int) $destinationPostalCode ?: null,
+            'destination_postal_code' => $destinationPostalCode,
             'destination_coordinate' => [
                 'latitude' => (float) $destinationLat,
                 'longitude' => (float) $destinationLng,
             ],
 
-            'courier_company' => strtolower($order->shipping_courier ?: ($order->shipment?->courier_company ?? '')),
-            'courier_type' => strtolower($order->shipping_service ?: ($order->shipment?->courier_service ?? '')),
+            'courier_company' => strtolower($order->shipping_courier ?: ($order->shipment?->courier_company ?? 'jne')),
+            'courier_type' => $this->mapCourierType(
+                $order->shipping_courier ?: ($order->shipment?->courier_company ?? 'jne'),
+                $order->shipping_service ?: ($order->shipment?->courier_service ?? 'reg')
+            ),
             'delivery_type' => 'now', // 'now', 'scheduled'
             'items' => $items,
         ];
@@ -354,5 +379,55 @@ class BiteshipService
             ]);
             throw $e;
         }
+    }
+
+    /**
+     * Map human-readable courier service names to Biteship technical courier_type codes.
+     */
+    public function mapCourierType(string $courierCompany, string $service): string
+    {
+        $courier = strtolower(trim($courierCompany));
+        $svc = strtolower(trim($service));
+
+        if (empty($svc)) {
+            return 'reg';
+        }
+
+        // List of known Biteship technical courier_type codes
+        $validCodes = [
+            'reg', 'ez', 'yes', 'oke', 'ons', 'best', 'nextday', 'sameday', 
+            'instant', 'cargo', 'eco', 'jtr', 'gokil', 'carg', 'siunt', 
+            'super', 'onepack', 'regpack', 'poskil'
+        ];
+
+        if (in_array($svc, $validCodes)) {
+            return $svc;
+        }
+
+        // Fuzzy match common Indonesian service names to Biteship courier_type
+        return match(true) {
+            str_contains($svc, 'reg') || str_contains($svc, 'standard') || str_contains($svc, 'standar') => match($courier) {
+                'jnt', 'j&t' => 'ez',
+                default => 'reg',
+            },
+            str_contains($svc, 'next') || str_contains($svc, 'esok') || str_contains($svc, 'yes') || str_contains($svc, 'ons') || str_contains($svc, 'best') => match($courier) {
+                'jne' => 'yes',
+                'tiki' => 'ons',
+                'sicepat' => 'best',
+                default => 'nextday',
+            },
+            str_contains($svc, 'same') => 'sameday',
+            str_contains($svc, 'instant') || str_contains($svc, 'instan') => 'instant',
+            str_contains($svc, 'cargo') || str_contains($svc, 'kargo') || str_contains($svc, 'trucking') || str_contains($svc, 'jtr') || str_contains($svc, 'gokil') => match($courier) {
+                'jne' => 'jtr',
+                'jnt', 'j&t' => 'carg',
+                default => 'cargo',
+            },
+            str_contains($svc, 'hemat') || str_contains($svc, 'eco') || str_contains($svc, 'oke') => match($courier) {
+                'jne' => 'oke',
+                default => 'eco',
+            },
+            default => 'reg',
+        };
     }
 }

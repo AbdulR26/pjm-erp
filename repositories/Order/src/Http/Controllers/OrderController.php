@@ -48,8 +48,9 @@ class OrderController extends Controller
         $this->scaffolding()->datatableColumnSet('status_id', [
             'title' => 'Status Order',
             'formatter' => function ($model) {
-                $slug = $model->status->slug ?? 'pending';
-                $name = $model->status->name ?? 'Pending';
+                $statusObj = $model->statusRelation ?: \App\Models\OrderStatus::find($model->status_id);
+                $slug = $statusObj?->slug ?? 'pending';
+                $name = $statusObj?->name ?? 'Pending';
                 $badge = 'secondary';
                 if ($slug === 'processing') $badge = 'info';
                 elseif ($slug === 'shipping') $badge = 'warning';
@@ -295,7 +296,7 @@ class OrderController extends Controller
                 'destination_contact_name' => $request->destination_contact_name,
                 'destination_contact_phone' => $request->destination_contact_phone,
                 'destination_address' => $request->destination_address,
-                'destination_postal_code' => $request->destination_postal_code,
+                'destination_postal_code' => preg_replace('/[^0-9]/', '', (string)$request->destination_postal_code),
                 'destination_latitude' => $request->destination_latitude,
                 'destination_longitude' => $request->destination_longitude,
             ]);
@@ -385,15 +386,51 @@ class OrderController extends Controller
             'notes' => 'nullable|string',
             'waybill_id' => 'nullable|string',
             'shipment_status' => 'nullable|string',
+            'destination_contact_name' => 'nullable|string',
+            'destination_contact_phone' => 'nullable|string',
+            'destination_address' => 'nullable|string',
+            'destination_postal_code' => 'nullable|string',
+            'courier_company' => 'nullable|string',
+            'courier_service' => 'nullable|string',
         ]);
 
         $order->update(['notes' => $request->notes]);
 
         if ($order->shipment) {
-            $order->shipment->update([
+            $shipmentData = [
                 'waybill_id' => $request->waybill_id,
                 'status' => $request->shipment_status ?? $order->shipment->status,
-            ]);
+            ];
+
+            if ($request->filled('courier_company')) {
+                $shipmentData['courier_company'] = strtolower($request->courier_company);
+            }
+            if ($request->filled('courier_service')) {
+                $shipmentData['courier_service'] = $request->courier_service;
+            }
+            if ($request->filled('destination_contact_name')) {
+                $shipmentData['destination_contact_name'] = $request->destination_contact_name;
+            }
+            if ($request->filled('destination_contact_phone')) {
+                $shipmentData['destination_contact_phone'] = $request->destination_contact_phone;
+            }
+            if ($request->filled('destination_address')) {
+                $shipmentData['destination_address'] = $request->destination_address;
+            }
+            $order->shipment->update($shipmentData);
+
+            // Auto update order status to 'shipping' (Dikirim) if resi/waybill_id exists and status is pending/processing
+            $effectiveWaybill = $request->waybill_id ?: $order->shipment->waybill_id;
+            if (!empty($effectiveWaybill) && in_array($order->status_id, [1, 2])) {
+                $shippingStatus = OrderStatus::where('slug', 'shipping')->first();
+                if ($shippingStatus) {
+                    $order->update(['status_id' => $shippingStatus->id]);
+                    $order->histories()->create([
+                        'status_id' => $shippingStatus->id,
+                        'description' => 'Status otomatis diperbarui menjadi Dikirim karena nomor resi (' . $effectiveWaybill . ') telah tersedia.',
+                    ]);
+                }
+            }
         }
 
         return response()->json([

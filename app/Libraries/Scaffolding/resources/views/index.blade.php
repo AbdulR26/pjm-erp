@@ -164,8 +164,7 @@
 @section('content')
 {!! $config['viewStyle'] ? implode("\n", $config['viewStyle']) : '' !!}
 {!! is_array($config['viewSearch']) ? implode("\n", $config['viewSearch']) : $config['viewSearch'] !!}
-    <div class="card scaffolding-card">
-        <div class="card-body">
+
             {{-- Bulk Action Bar --}}
             <div id="bulk-action-bar">
                 <span id="bulk-selected-count">0</span> data dipilih &nbsp;
