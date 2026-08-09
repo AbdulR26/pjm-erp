@@ -4,17 +4,81 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\CustomerAddress;
+use App\Models\CustomerOtp;
+use App\Mail\AccountActivationMail;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class CustomerAuthController extends Controller
 {
-    /**
-     * Redirect the user to the Google OAuth provider.
-     */
+    protected function generateAndSendOtp(Customer $customer)
+    {
+        $now = now();
+        $otpRecord = CustomerOtp::where('customer_id', $customer->id)->first();
+
+        if ($otpRecord) {
+            if ($otpRecord->resend_blocked_until && $now->lt($otpRecord->resend_blocked_until)) {
+                $diffSecs = $now->diffInSeconds($otpRecord->resend_blocked_until);
+                $diffMins = ceil($diffSecs / 60);
+                return [
+                    'success' => false,
+                    'message' => "Batas pengiriman ulang OTP tercapai (3x). Silakan tunggu {$diffMins} menit lagi untuk meminta OTP baru."
+                ];
+            }
+
+            if ($otpRecord->resend_blocked_until && $now->gte($otpRecord->resend_blocked_until)) {
+                $otpRecord->resend_blocked_until = null;
+                $otpRecord->resend_count = 0;
+            }
+
+            $newResendCount = $otpRecord->resend_count + 1;
+
+            if ($newResendCount > 3) {
+                $otpRecord->update([
+                    'resend_blocked_until' => $now->copy()->addHour(),
+                ]);
+                return [
+                    'success' => false,
+                    'message' => 'Batas pengiriman ulang OTP tercapai (3 kali dalam 1 jam). Layanan terblokir sementara selama 1 jam.'
+                ];
+            }
+
+            $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+            $otpRecord->update([
+                'otp_code'     => $otpCode,
+                'expires_at'   => $now->copy()->addMinutes(10),
+                'resend_count' => $newResendCount,
+            ]);
+        } else {
+            $otpCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+            $otpRecord = CustomerOtp::create([
+                'customer_id'  => $customer->id,
+                'email'        => $customer->email,
+                'otp_code'     => $otpCode,
+                'expires_at'   => $now->copy()->addMinutes(10),
+                'resend_count' => 1,
+            ]);
+        }
+
+        try {
+            Mail::to($customer->email)->send(new AccountActivationMail($customer, $otpCode));
+        } catch (\Exception $e) {
+            Log::error("Gagal mengirim email OTP aktivasi ke {$customer->email}: " . $e->getMessage());
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Kode OTP aktivasi akun telah dikirimkan ke email ' . $customer->email . '.'
+        ];
+    }
+
     public function redirectToGoogle()
     {
         return Socialite::driver('google')
@@ -22,9 +86,6 @@ class CustomerAuthController extends Controller
             ->redirect();
     }
 
-    /**
-     * Handle the Google OAuth callback.
-     */
     public function handleGoogleCallback()
     {
         try {
@@ -35,17 +96,11 @@ class CustomerAuthController extends Controller
         }
     }
 
-    /**
-     * Redirect the user to the Facebook OAuth provider.
-     */
     public function redirectToFacebook()
     {
         return Socialite::driver('facebook')->redirect();
     }
 
-    /**
-     * Handle the Facebook OAuth callback.
-     */
     public function handleFacebookCallback()
     {
         try {
@@ -56,41 +111,37 @@ class CustomerAuthController extends Controller
         }
     }
 
-    /**
-     * Find or create a customer from the social login data, then save to session.
-     */
     protected function loginOrCreateCustomer(string $provider, $socialUser)
     {
-        // Find by social_id + provider, or by email (to merge accounts)
         $customer = Customer::where('social_provider', $provider)
                             ->where('social_id', $socialUser->getId())
                             ->first();
 
         if (!$customer && $socialUser->getEmail()) {
-            // Try to find by email (user may have registered with the other provider)
             $customer = Customer::where('email', $socialUser->getEmail())->first();
             if ($customer) {
-                // Upgrade the existing record with social login info
                 $customer->update([
-                    'social_provider' => $provider,
-                    'social_id'       => $socialUser->getId(),
-                    'avatar'          => $socialUser->getAvatar(),
+                    'social_provider'   => $provider,
+                    'social_id'         => $socialUser->getId(),
+                    'avatar'            => $socialUser->getAvatar(),
+                    'is_active'         => true,
+                    'email_verified_at' => now(),
                 ]);
             }
         }
 
         if (!$customer) {
-            // First-time user: create new customer record
             $customer = Customer::create([
-                'name'            => $socialUser->getName() ?? 'Customer',
-                'email'           => $socialUser->getEmail(),
-                'social_provider' => $provider,
-                'social_id'       => $socialUser->getId(),
-                'avatar'          => $socialUser->getAvatar(),
+                'name'              => $socialUser->getName() ?? 'Customer',
+                'email'             => $socialUser->getEmail(),
+                'social_provider'   => $provider,
+                'social_id'         => $socialUser->getId(),
+                'avatar'            => $socialUser->getAvatar(),
+                'is_active'         => true,
+                'email_verified_at' => now(),
             ]);
         }
 
-        // Save customer data in session
         Session::put('customer', [
             'id'          => $customer->id,
             'name'        => $customer->name,
@@ -107,9 +158,6 @@ class CustomerAuthController extends Controller
         return redirect('/');
     }
 
-    /**
-     * Return the currently-logged-in customer data (for React to check session).
-     */
     public function me(Request $request)
     {
         $customer = Session::get('customer');
@@ -121,33 +169,27 @@ class CustomerAuthController extends Controller
         return response()->json($customer);
     }
 
-    /**
-     * Log out the customer by clearing the session.
-     */
     public function logout(Request $request)
     {
         Session::forget('customer');
         return response()->json(['status' => 'logged_out']);
     }
 
-    /**
-     * Handle customer registration.
-     */
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:customers',
-            'phone' => 'required|string|max:20',
+            'name'     => 'required|string|max:255',
+            'email'    => 'required|string|email|max:255|unique:customers',
+            'phone'    => 'required|string|max:20',
             'password' => 'required|string|min:6',
         ], [
-            'name.required' => 'Nama lengkap wajib diisi.',
-            'email.required' => 'Email wajib diisi.',
-            'email.email' => 'Format email tidak valid.',
-            'email.unique' => 'Email ini sudah terdaftar.',
-            'phone.required' => 'Nomor WhatsApp wajib diisi.',
+            'name.required'     => 'Nama lengkap wajib diisi.',
+            'email.required'    => 'Email wajib diisi.',
+            'email.email'       => 'Format email tidak valid.',
+            'email.unique'      => 'Email ini sudah terdaftar.',
+            'phone.required'    => 'Nomor WhatsApp wajib diisi.',
             'password.required' => 'Password wajib diisi.',
-            'password.min' => 'Password minimal harus 6 karakter.',
+            'password.min'      => 'Password minimal harus 6 karakter.',
         ]);
 
         if ($validator->fails()) {
@@ -158,44 +200,38 @@ class CustomerAuthController extends Controller
         }
 
         $customer = Customer::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'password' => Hash::make($request->password),
+            'name'      => $request->name,
+            'email'     => $request->email,
+            'phone'     => $request->phone,
+            'password'  => Hash::make($request->password),
+            'is_active' => false,
         ]);
 
-        // Save customer data in session
-        $sessionData = [
-            'id'          => $customer->id,
-            'name'        => $customer->name,
-            'email'       => $customer->email,
-            'avatar'      => null,
-            'phone'       => $customer->phone,
-            'address'     => $customer->address,
-            'postal_code' => $customer->postal_code,
-            'latitude'    => $customer->latitude,
-            'longitude'   => $customer->longitude,
-            'provider'    => 'email',
-        ];
-        Session::put('customer', $sessionData);
+        $otpResult = $this->generateAndSendOtp($customer);
+
+        if (!$otpResult['success']) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $otpResult['message']
+            ], 429);
+        }
 
         return response()->json([
-            'status' => 'success',
-            'customer' => $sessionData
+            'status'           => 'unverified',
+            'needs_activation' => true,
+            'email'            => $customer->email,
+            'message'          => 'Pendaftaran berhasil! Kode OTP telah dikirimkan ke email Anda untuk aktivasi akun.'
         ]);
     }
 
-    /**
-     * Handle customer email login.
-     */
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|string|email',
+            'email'    => 'required|string|email',
             'password' => 'required|string',
         ], [
-            'email.required' => 'Email wajib diisi.',
-            'email.email' => 'Format email tidak valid.',
+            'email.required'    => 'Email wajib diisi.',
+            'email.email'       => 'Format email tidak valid.',
             'password.required' => 'Password wajib diisi.',
         ]);
 
@@ -210,12 +246,22 @@ class CustomerAuthController extends Controller
 
         if (!$customer || !$customer->password || !Hash::check($request->password, $customer->password)) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Email atau password salah.'
             ], 401);
         }
 
-        // Save customer data in session
+        if (!$customer->is_active) {
+            $otpResult = $this->generateAndSendOtp($customer);
+
+            return response()->json([
+                'status'           => 'unverified',
+                'needs_activation' => true,
+                'email'            => $customer->email,
+                'message'          => 'Akun Anda belum diaktivasi. Kode OTP baru telah dikirimkan ke email Anda (' . $customer->email . ').'
+            ], 403);
+        }
+
         $sessionData = [
             'id'          => $customer->id,
             'name'        => $customer->name,
@@ -231,14 +277,179 @@ class CustomerAuthController extends Controller
         Session::put('customer', $sessionData);
 
         return response()->json([
-            'status' => 'success',
+            'status'   => 'success',
             'customer' => $sessionData
         ]);
     }
 
-    /**
-     * Update the currently-logged-in customer profile (name, phone, address).
-     */
+    public function verifyOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email'    => 'required|string|email',
+            'otp_code' => 'required|string|size:6',
+        ], [
+            'email.required'    => 'Email wajib diisi.',
+            'otp_code.required' => 'Kode OTP 6-digit wajib diisi.',
+            'otp_code.size'     => 'Kode OTP harus 6 digit angka.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'validation_error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $customer = Customer::where('email', $request->email)->first();
+
+        if (!$customer) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Akun pelanggan tidak ditemukan.'
+            ], 404);
+        }
+
+        if ($customer->is_active) {
+            return response()->json([
+                'status'  => 'already_verified',
+                'message' => 'Akun Anda sudah diaktivasi sebelumnya. Silakan login.'
+            ]);
+        }
+
+        $otpRecord = CustomerOtp::where('customer_id', $customer->id)->first();
+
+        if (!$otpRecord) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Kode OTP belum dibuat. Silakan klik "Kirim Ulang OTP".'
+            ], 400);
+        }
+
+        $now = now();
+
+        if ($otpRecord->failed_blocked_until && $now->lt($otpRecord->failed_blocked_until)) {
+            $diffSecs = $now->diffInSeconds($otpRecord->failed_blocked_until);
+            $diffMins = ceil($diffSecs / 60);
+            return response()->json([
+                'status'  => 'error',
+                'message' => "Verifikasi OTP terkunci sementara karena salah 3 kali. Silakan coba lagi setelah {$diffMins} menit."
+            ], 429);
+        }
+
+        if ($otpRecord->failed_blocked_until && $now->gte($otpRecord->failed_blocked_until)) {
+            $otpRecord->update([
+                'failed_blocked_until' => null,
+                'failed_attempts'       => 0,
+            ]);
+        }
+
+        if ($otpRecord->otp_code !== $request->otp_code) {
+            $newFailedCount = $otpRecord->failed_attempts + 1;
+
+            if ($newFailedCount >= 3) {
+                $otpRecord->update([
+                    'failed_attempts'       => $newFailedCount,
+                    'failed_blocked_until' => $now->copy()->addHour(),
+                ]);
+
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Kode OTP salah 3 kali berturut-turut. Verifikasi akun terkunci sementara selama 1 jam.'
+                ], 429);
+            } else {
+                $otpRecord->update([
+                    'failed_attempts' => $newFailedCount,
+                ]);
+
+                $rem = 3 - $newFailedCount;
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => "Kode OTP yang Anda masukkan salah. Sisa percobaan: {$rem} kali."
+                ], 422);
+            }
+        }
+
+        if ($now->gt($otpRecord->expires_at)) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Kode OTP telah kedaluwarsa (lebih dari 10 menit). Silakan klik "Kirim Ulang OTP".'
+            ], 422);
+        }
+
+        $customer->update([
+            'is_active'         => true,
+            'email_verified_at' => $now,
+        ]);
+
+        $otpRecord->delete();
+
+        $sessionData = [
+            'id'          => $customer->id,
+            'name'        => $customer->name,
+            'email'       => $customer->email,
+            'avatar'      => $customer->avatar,
+            'phone'       => $customer->phone,
+            'address'     => $customer->address,
+            'postal_code' => $customer->postal_code,
+            'latitude'    => $customer->latitude,
+            'longitude'   => $customer->longitude,
+            'provider'    => 'email',
+        ];
+        Session::put('customer', $sessionData);
+
+        return response()->json([
+            'status'   => 'success',
+            'message'  => 'Selamat! Akun Anda berhasil diaktivasi.',
+            'customer' => $sessionData
+        ]);
+    }
+
+    public function resendOtp(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|string|email',
+        ], [
+            'email.required' => 'Email wajib diisi.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'validation_error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $customer = Customer::where('email', $request->email)->first();
+
+        if (!$customer) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Akun dengan email tersebut tidak ditemukan.'
+            ], 404);
+        }
+
+        if ($customer->is_active) {
+            return response()->json([
+                'status'  => 'already_verified',
+                'message' => 'Akun ini sudah aktif. Silakan langsung login.'
+            ]);
+        }
+
+        $otpResult = $this->generateAndSendOtp($customer);
+
+        if (!$otpResult['success']) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => $otpResult['message']
+            ], 429);
+        }
+
+        return response()->json([
+            'status'  => 'success',
+            'message' => $otpResult['message']
+        ]);
+    }
+
     public function updateProfile(Request $request)
     {
         $sessionCustomer = Session::get('customer');
@@ -256,7 +467,7 @@ class CustomerAuthController extends Controller
             'latitude'    => 'nullable|numeric',
             'longitude'   => 'nullable|numeric',
         ], [
-            'name.required' => 'Nama lengkap wajib diisi.',
+            'name.required'  => 'Nama lengkap wajib diisi.',
             'phone.required' => 'Nomor WhatsApp wajib diisi.',
         ]);
 
@@ -276,7 +487,6 @@ class CustomerAuthController extends Controller
             'longitude'   => $request->longitude,
         ]);
 
-        // Update session data
         $sessionData = [
             'id'          => $customer->id,
             'name'        => $customer->name,
@@ -292,14 +502,11 @@ class CustomerAuthController extends Controller
         Session::put('customer', $sessionData);
 
         return response()->json([
-            'status' => 'success',
+            'status'   => 'success',
             'customer' => $sessionData
         ]);
     }
 
-    /**
-     * Get all addresses for the logged-in customer.
-     */
     public function getAddresses(Request $request)
     {
         $sessionCustomer = Session::get('customer');
@@ -315,9 +522,6 @@ class CustomerAuthController extends Controller
         return response()->json($addresses);
     }
 
-    /**
-     * Store a new address for the logged-in customer.
-     */
     public function storeAddress(Request $request)
     {
         $sessionCustomer = Session::get('customer');
@@ -341,18 +545,15 @@ class CustomerAuthController extends Controller
 
         $customerId = $sessionCustomer['id'];
 
-        // If this is the first address, it must be primary
         $addressCount = CustomerAddress::where('customer_id', $customerId)->count();
         if ($addressCount === 0) {
             $validated['is_primary'] = true;
         } elseif (!empty($validated['is_primary']) && $validated['is_primary']) {
-            // Unset other primary addresses
             CustomerAddress::where('customer_id', $customerId)->update(['is_primary' => false]);
         }
 
         $address = CustomerAddress::create(array_merge($validated, ['customer_id' => $customerId]));
 
-        // Sync to customer table if it's primary (for backwards compatibility/fallbacks)
         if ($address->is_primary) {
             $customer = Customer::find($customerId);
             $fullAddressStr = $address->address . ', Kel. ' . $address->village . ', Kec. ' . $address->district . ', ' . $address->city . ', ' . $address->province;
@@ -362,7 +563,6 @@ class CustomerAuthController extends Controller
                 'latitude'    => $address->latitude,
                 'longitude'   => $address->longitude,
             ]);
-            // Sync session
             $sessionCustomer['address'] = $fullAddressStr;
             $sessionCustomer['postal_code'] = $address->postal_code;
             $sessionCustomer['latitude'] = $address->latitude;
@@ -377,9 +577,6 @@ class CustomerAuthController extends Controller
         ], 201);
     }
 
-    /**
-     * Update an address for the logged-in customer.
-     */
     public function updateAddress(Request $request, $id)
     {
         $sessionCustomer = Session::get('customer');
@@ -405,7 +602,6 @@ class CustomerAuthController extends Controller
         ]);
 
         if (!empty($validated['is_primary']) && $validated['is_primary']) {
-            // Unset other primary addresses
             CustomerAddress::where('customer_id', $customerId)->update(['is_primary' => false]);
         }
 
@@ -416,7 +612,6 @@ class CustomerAuthController extends Controller
             $address->is_primary = true;
         }
 
-        // Sync to customer table if it's primary
         if ($address->is_primary) {
             $customer = Customer::find($customerId);
             $fullAddressStr = $address->address . ', Kel. ' . $address->village . ', Kec. ' . $address->district . ', ' . $address->city . ', ' . $address->province;
@@ -426,7 +621,6 @@ class CustomerAuthController extends Controller
                 'latitude'    => $address->latitude,
                 'longitude'   => $address->longitude,
             ]);
-            // Sync session
             $sessionCustomer['address'] = $fullAddressStr;
             $sessionCustomer['postal_code'] = $address->postal_code;
             $sessionCustomer['latitude'] = $address->latitude;
@@ -441,9 +635,6 @@ class CustomerAuthController extends Controller
         ]);
     }
 
-    /**
-     * Delete an address for the logged-in customer.
-     */
     public function destroyAddress(Request $request, $id)
     {
         $sessionCustomer = Session::get('customer');
@@ -458,7 +649,6 @@ class CustomerAuthController extends Controller
         $address->delete();
 
         if ($wasPrimary) {
-            // Set another address as primary if any exists
             $nextAddress = CustomerAddress::where('customer_id', $customerId)->first();
             if ($nextAddress) {
                 $nextAddress->update(['is_primary' => true]);
@@ -496,9 +686,6 @@ class CustomerAuthController extends Controller
         ]);
     }
 
-    /**
-     * Set an address as primary.
-     */
     public function setPrimaryAddress(Request $request, $id)
     {
         $sessionCustomer = Session::get('customer');
@@ -512,7 +699,6 @@ class CustomerAuthController extends Controller
         CustomerAddress::where('customer_id', $customerId)->update(['is_primary' => false]);
         $address->update(['is_primary' => true]);
 
-        // Sync to customer table
         $customer = Customer::find($customerId);
         $fullAddressStr = $address->address . ', Kel. ' . $address->village . ', Kec. ' . $address->district . ', ' . $address->city . ', ' . $address->province;
         $customer->update([
@@ -522,7 +708,6 @@ class CustomerAuthController extends Controller
             'longitude'   => $address->longitude,
         ]);
 
-        // Sync session
         $sessionCustomer['address'] = $fullAddressStr;
         $sessionCustomer['postal_code'] = $address->postal_code;
         $sessionCustomer['latitude'] = $address->latitude;

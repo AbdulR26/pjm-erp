@@ -155,12 +155,12 @@ export default function OrderReturnModal({ isOpen, onClose, order, onSuccess }) 
                         </div>
                     )}
 
-                    <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 text-amber-900 text-xs space-y-1">
-                        <p className="font-bold flex items-center gap-1.5 text-amber-800">
-                            <AlertCircle size={14} /> Kebijakan Pengembalian Barang:
+                    <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-4 text-emerald-900 text-xs space-y-1">
+                        <p className="font-bold flex items-center gap-1.5 text-emerald-800">
+                            <CheckCircle size={14} /> Kebijakan Pengembalian Barang:
                         </p>
-                        <p className="leading-relaxed text-[11px] text-amber-800/90">
-                            Ongkos kirim pengembalian barang (*return shipping*) dibebankan kepada Pelanggan. Uang refund murni mengembalikan harga produk yang diretur setelah diverifikasi Admin.
+                        <p className="leading-relaxed text-[11px] text-emerald-800/90">
+                            Ongkos kirim pengembalian barang (*return shipping*) sepenuhnya dibebankan dan ditanggung oleh Toko. Dana refund produk yang disetujui akan dikembalikan 100%.
                         </p>
                     </div>
 

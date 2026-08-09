@@ -7,6 +7,8 @@ use App\Models\Setting;
 use App\Models\Banner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 
 class SettingController extends Controller
 {
@@ -19,6 +21,8 @@ class SettingController extends Controller
         $banners = Banner::orderBy('order')->get();
         $couriers = \App\Models\Courier::all();
         $paymentMethods = \App\Models\PaymentMethod::all();
+        $payments = \App\Models\Payment::with('order.customer')->orderBy('created_at', 'desc')->limit(15)->get();
+        $shipments = \App\Models\Shipment::with('order.customer')->orderBy('created_at', 'desc')->limit(15)->get();
         
         $title = 'Pengaturan Aplikasi';
         $breadcrumbs = [
@@ -128,6 +132,7 @@ class SettingController extends Controller
 
         // Biteship
         Setting::set('biteship_api_key', $request->biteship_api_key);
+        Setting::set('biteship_is_production', $request->has('biteship_is_production') ? '1' : '0');
         Setting::set('biteship_origin_postal_code', $request->biteship_origin_postal_code);
         Setting::set('biteship_origin_latitude', $request->biteship_origin_latitude);
         Setting::set('biteship_origin_longitude', $request->biteship_origin_longitude);
@@ -388,5 +393,154 @@ class SettingController extends Controller
                 'message' => 'Gagal mengubah status metode pembayaran: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Download database SQL backup.
+     */
+    public function downloadBackup()
+    {
+        $dbName = config('database.connections.' . config('database.default') . '.database');
+        $tables = DB::select('SHOW TABLES');
+        $keyName = 'Tables_in_' . $dbName;
+        
+        $tableNames = [];
+        foreach ($tables as $table) {
+            if (isset($table->$keyName)) {
+                $tableNames[] = $table->$keyName;
+            } else {
+                $array = (array) $table;
+                $tableNames[] = reset($array);
+            }
+        }
+
+        $appName = strtolower(preg_replace('/[^a-zA-Z0-9_]/', '_', Setting::get('app_short_name', 'pjm')));
+        $filename = 'backup-' . $appName . '-' . date('Y-m-d_H-i-s') . '.sql';
+
+        return response()->streamDownload(function () use ($tableNames) {
+            echo "-- Database Backup for " . config('app.name', 'Laravel') . "\n";
+            echo "-- Date: " . date('Y-m-d H:i:s') . "\n\n";
+            echo "SET FOREIGN_KEY_CHECKS=0;\n\n";
+
+            $pdo = DB::getPdo();
+
+            foreach ($tableNames as $table) {
+                $createTable = DB::select("SHOW CREATE TABLE `$table`");
+                if (!empty($createTable)) {
+                    $createSql = ((array)$createTable[0])['Create Table'] ?? null;
+                    if ($createSql) {
+                        echo "DROP TABLE IF EXISTS `$table`;\n";
+                        echo $createSql . ";\n\n";
+                    }
+                }
+
+                $rows = DB::table($table)->get();
+                if ($rows->isNotEmpty()) {
+                    foreach ($rows->chunk(100) as $chunk) {
+                        $insertSql = "INSERT INTO `$table` VALUES ";
+                        $valueLines = [];
+                        foreach ($chunk as $row) {
+                            $values = [];
+                            foreach ((array)$row as $val) {
+                                if (is_null($val)) {
+                                    $values[] = "NULL";
+                                } elseif (is_numeric($val) && !is_string($val)) {
+                                    $values[] = $val;
+                                } else {
+                                    $values[] = $pdo->quote($val);
+                                }
+                            }
+                            $valueLines[] = "(" . implode(", ", $values) . ")";
+                        }
+                        $insertSql .= implode(",\n", $valueLines) . ";\n";
+                        echo $insertSql . "\n";
+                    }
+                }
+                echo "\n";
+            }
+
+            echo "SET FOREIGN_KEY_CHECKS=1;\n";
+        }, $filename, [
+            'Content-Type' => 'application/sql',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * Reset database data preserving users, roles, permissions, settings, and migrations.
+     */
+    public function resetData(Request $request)
+    {
+        $request->validate([
+            'confirm_text' => 'required|string',
+        ]);
+
+        if (strtoupper(trim($request->confirm_text)) !== 'RESET') {
+            return redirect()->back()->withErrors(['confirm_text' => 'Kata konfirmasi harus persis tulisan RESET.']);
+        }
+
+        $preservedTables = [
+            'users',
+            'roles',
+            'permissions',
+            'model_has_roles',
+            'model_has_permissions',
+            'role_has_permissions',
+            'migrations',
+            'settings',
+            'order_statuses',
+            'product_statuses',
+            'product_types',
+            'sessions',
+            'cache',
+            'cache_locks',
+        ];
+
+        try {
+            $tables = DB::select('SHOW TABLES');
+            $allTables = [];
+            foreach ($tables as $table) {
+                $array = (array) $table;
+                $tableName = reset($array);
+                if ($tableName) {
+                    $allTables[] = $tableName;
+                }
+            }
+
+            $tablesToReset = array_diff($allTables, $preservedTables);
+
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            foreach ($tablesToReset as $table) {
+                DB::table($table)->truncate();
+            }
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+            return redirect()->back()->with('success', 'Semua data operasional & transaksi berhasil di-reset. Data User, Role, Permission, dan Pengaturan Sistem tetap dipertahankan.');
+        } catch (\Throwable $e) {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            return redirect()->back()->withErrors(['error' => 'Gagal mereset data: ' . $e->getMessage()]);
+        }
+    }
+
+    public function testMidtrans(Request $request)
+    {
+        $serverKey = $request->input('midtrans_server_key');
+        $isProduction = $request->has('midtrans_is_production') ? ($request->input('midtrans_is_production') == '1' || $request->input('midtrans_is_production') === true) : null;
+
+        $midtransService = new \App\Services\MidtransService();
+        $result = $midtransService->testConnection($serverKey, $isProduction);
+
+        return response()->json($result);
+    }
+
+    public function testBiteship(Request $request)
+    {
+        $apiKey = $request->input('biteship_api_key');
+        $isProduction = $request->has('biteship_is_production') ? ($request->input('biteship_is_production') == '1' || $request->input('biteship_is_production') === true) : null;
+
+        $biteshipService = new \App\Services\BiteshipService();
+        $result = $biteshipService->testConnection($apiKey, $isProduction);
+
+        return response()->json($result);
     }
 }

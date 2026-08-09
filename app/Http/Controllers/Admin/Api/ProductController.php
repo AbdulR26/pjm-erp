@@ -202,16 +202,9 @@ class ProductController extends Controller
                 ]);
                 $skuToVariantId[$vData['sku']] = $variant->id;
 
-                // Log initial stock as mutation if stock > 0
+                // Log initial stock as mutation if stock > 0 via StockService
                 if ($vData['stock'] > 0) {
-                    StockMutation::create([
-                        'product_variant_id' => $variant->id,
-                        'user_id' => $userId,
-                        'type' => 'in',
-                        'quantity' => $vData['stock'],
-                        'source' => 'adjustment',
-                        'notes' => 'Saldo stok awal pembukaan produk'
-                    ]);
+                    app(\App\Services\StockService::class)->recordInitialProductStock($variant, (int)$vData['stock'], $userId);
                 }
             }
 

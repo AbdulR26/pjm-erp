@@ -163,6 +163,20 @@ function AppContent() {
         saveCart([]); // Kosongkan keranjang belanja
     };
 
+    if (isLoginPageActive) {
+        return (
+            <LoginPage
+                reason={loginReason}
+                onBack={() => navigateTo('home')}
+                onLoginSuccess={(user) => {
+                    setCurrentUser(user);
+                    navigateTo(loginReason === 'checkout' ? 'checkout' : 'home');
+                }}
+                settings={settings}
+            />
+        );
+    }
+
     return (
         <div className="flex flex-col min-h-screen bg-[#f5f5f5]">
             <Header 
@@ -207,15 +221,6 @@ function AppContent() {
                             settings={settings}
                             initialTab={new URLSearchParams(window.location.search).get('tab') || 'profile'}
                             onTabChange={(tabName) => navigateTo('profile', { tab: tabName })}
-                        />
-                    ) : isLoginPageActive ? (
-                        <LoginPage
-                            reason={loginReason}
-                            onBack={() => navigateTo('home')}
-                            onLoginSuccess={(user) => {
-                                setCurrentUser(user);
-                                navigateTo(loginReason === 'checkout' ? 'checkout' : 'home');
-                            }}
                         />
                     ) : lastOrder ? (
                         <div className="max-w-xl mx-auto bg-white rounded-2xl border border-slate-100 p-6 md:p-8 text-center space-y-6 shadow-xs animate-in fade-in zoom-in-95 duration-300 my-8">

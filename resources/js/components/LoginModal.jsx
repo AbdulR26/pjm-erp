@@ -236,31 +236,6 @@ export default function LoginModal({ onClose }) {
                         Pilih metode login untuk melanjutkan checkout dengan aman
                     </p>
 
-                    {/* Google Button */}
-                    <button
-                        className="shopee-btn shopee-btn-google"
-                        onClick={handleGoogleLogin}
-                    >
-                        <GoogleIcon />
-                        <span>Lanjutkan dengan Google</span>
-                    </button>
-
-                    {/* Facebook Button */}
-                    <button
-                        className="shopee-btn shopee-btn-facebook"
-                        onClick={handleFacebookLogin}
-                    >
-                        <FacebookIcon />
-                        <span>Lanjutkan dengan Facebook</span>
-                    </button>
-
-                    {/* Divider */}
-                    <div className="shopee-divider">
-                        <div className="shopee-divider-line" />
-                        <span className="shopee-divider-text">atau</span>
-                        <div className="shopee-divider-line" />
-                    </div>
-
                     {/* Skip Button */}
                     <button className="shopee-btn-skip" onClick={onClose}>
                         Lanjut Belanja Tanpa Login

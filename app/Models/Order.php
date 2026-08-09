@@ -114,10 +114,8 @@ class Order extends Model
      */
     public static function deductStock($order)
     {
-        $order->load('items.product');
-
         // Prevent duplicate stock deductions
-        $alreadyMutated = \Qollam\Product\Models\StockMutation::where('reference_type', 'order')
+        $alreadyMutated = \App\Models\StockMutation::where('reference_type', 'Order')
             ->where('reference_id', $order->id)
             ->exists();
 
@@ -125,25 +123,6 @@ class Order extends Model
             return;
         }
 
-        foreach ($order->items as $item) {
-            $product = $item->product;
-            if ($product) {
-                $qty = (int) $item->quantity;
-                $newStock = max(0, $product->stock - $qty);
-                
-                // Update product stock
-                $product->update(['stock' => $newStock]);
-
-                // Create stock mutation log
-                \Qollam\Product\Models\StockMutation::create([
-                    'product_id'     => $product->id,
-                    'type'           => 'out',
-                    'quantity'       => $qty,
-                    'reference_type' => 'order',
-                    'reference_id'   => $order->id,
-                    'notes'          => "Pengurangan stok otomatis untuk Order #{$order->order_number}",
-                ]);
-            }
-        }
+        app(\App\Services\StockService::class)->recordPaymentDeduction($order);
     }
 }

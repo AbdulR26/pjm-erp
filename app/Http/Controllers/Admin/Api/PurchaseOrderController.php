@@ -237,7 +237,7 @@ class PurchaseOrderController extends Controller
             'items.*.quantity_received' => 'required|integer|min:0',
         ]);
 
-        DB::transaction(function () use ($request, $po) {
+        DB::transaction(function () use ($request, $po, $stockService) {
             $userId = Auth::id() ?? 1;
 
             foreach ($request->items as $receivedData) {
@@ -249,19 +249,7 @@ class PurchaseOrderController extends Controller
 
                     $diff = $newReceived - $oldReceived;
                     if ($diff > 0) {
-                        $product = $poItem->product;
-                        $product->increment('stock', $diff);
-
-                        // Log Stock Mutation
-                        StockMutation::create([
-                            'product_id' => $product->id,
-                            'user_id' => $userId,
-                            'type' => 'in',
-                            'quantity' => $diff,
-                            'reference_type' => 'PurchaseOrder',
-                            'reference_id' => $po->id,
-                            'notes' => "Terima barang PO #{$po->po_number}",
-                        ]);
+                        $stockService->recordPurchaseOrderReceive($po, $poItem->product_id, $diff, $userId);
                     }
 
                     $poItem->update([

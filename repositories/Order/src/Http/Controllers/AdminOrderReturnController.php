@@ -102,7 +102,7 @@ class AdminOrderReturnController extends Controller
         return view('order-module::returns.show', compact('return', 'title'));
     }
 
-    public function approve(Request $request, $id, MidtransService $midtransService)
+    public function approve(Request $request, $id, MidtransService $midtransService, \App\Services\StockService $stockService)
     {
         $return = OrderReturn::with(['order.payment', 'items'])->findOrFail($id);
 
@@ -172,6 +172,9 @@ class AdminOrderReturnController extends Controller
                 'approved_at' => now(),
                 'refunded_at' => now(),
             ]);
+
+            // Restok barang retur ke inventori via StockService
+            $stockService->recordReturnRestock($return);
 
             // Append Order History
             $return->order->histories()->create([

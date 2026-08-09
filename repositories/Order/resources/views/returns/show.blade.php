@@ -145,8 +145,8 @@
         <div class="card border-0 shadow-sm mb-2" style="border-radius: 16px;">
             <div class="card-body">
                 <h5 class="font-weight-bold text-dark mb-1"><i data-feather="truck" class="text-primary mr-50"></i> Pengembalian Barang (Kurir)</h5>
-                <div class="alert alert-warning py-75 small font-weight-bold mb-1">
-                    ℹ Biaya ongkir pengembalian barang dibebankan kepada Customer.
+                <div class="alert alert-info py-75 small font-weight-bold mb-1">
+                    ℹ Biaya ongkir pengembalian barang dibebankan dan ditanggung oleh Pemilik Toko.
                 </div>
                 <table class="table table-borderless table-sm mb-0">
                     <tr>
@@ -159,7 +159,7 @@
                     </tr>
                     <tr>
                         <td class="text-muted pl-0">Biaya Kirim</td>
-                        <td>: <span class="badge badge-light-dark">Ditanggung Customer</span></td>
+                        <td>: <span class="badge badge-light-success font-weight-bold">Ditanggung Toko</span></td>
                     </tr>
                 </table>
             </div>

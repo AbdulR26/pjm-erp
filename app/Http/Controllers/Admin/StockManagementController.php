@@ -121,7 +121,7 @@ class StockManagementController extends Controller
     /**
      * Perform manual stock mutation adjustment (+/- quantity).
      */
-    public function adjust(Request $request)
+    public function adjust(Request $request, \App\Services\StockService $stockService)
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
@@ -132,41 +132,33 @@ class StockManagementController extends Controller
         ]);
 
         $product = Product::findOrFail($request->product_id);
-        $qty = (int) $request->quantity;
-        $type = $request->type;
 
-        if ($type === 'out' && $product->stock < $qty) {
+        try {
+            $newStock = $stockService->recordManualAdjustment(
+                $product,
+                $request->type,
+                (int) $request->quantity,
+                $request->source,
+                $request->notes
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Mutasi stok berhasil disimpan.',
+                'new_stock' => $newStock
+            ]);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => "Stok tidak mencukupi. Stok saat ini: {$product->stock}, dikurangi: {$qty}."
+                'message' => $e->getMessage()
             ], 422);
         }
-
-        $newStock = $type === 'in' ? $product->stock + $qty : $product->stock - $qty;
-
-        DB::transaction(function () use ($product, $type, $qty, $newStock, $request) {
-            $product->update(['stock' => $newStock]);
-
-            StockMutation::create([
-                'product_id'     => $product->id,
-                'type'           => $type,
-                'quantity'       => $qty,
-                'reference_type' => $request->source,
-                'notes'          => $request->notes ?? 'Mutasi stok manual',
-            ]);
-        });
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Mutasi stok berhasil disimpan.',
-            'new_stock' => $newStock
-        ]);
     }
 
     /**
      * Correct stock directly to a target number (Stock Opname).
      */
-    public function correct(Request $request)
+    public function correct(Request $request, \App\Services\StockService $stockService)
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
@@ -175,29 +167,12 @@ class StockManagementController extends Controller
         ]);
 
         $product = Product::findOrFail($request->product_id);
-        $newStock = (int) $request->stock;
-        $currentStock = $product->stock;
-        $diff = $newStock - $currentStock;
 
-        if ($diff === 0) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Stok sama, tidak ada koreksi yang diperlukan.',
-                'new_stock' => $newStock
-            ]);
-        }
-
-        DB::transaction(function () use ($product, $newStock, $diff, $currentStock, $request) {
-            $product->update(['stock' => $newStock]);
-
-            StockMutation::create([
-                'product_id'     => $product->id,
-                'type'           => $diff > 0 ? 'in' : 'out',
-                'quantity'       => abs($diff),
-                'reference_type' => 'adjustment',
-                'notes'          => $request->notes ?? "Stock Opname: {$currentStock} → {$newStock}",
-            ]);
-        });
+        $newStock = $stockService->recordStockOpname(
+            $product,
+            (int) $request->stock,
+            $request->notes
+        );
 
         return response()->json([
             'success' => true,

@@ -45,6 +45,8 @@ Route::prefix('api')->group(function () {
     Route::post('/auth/logout', [CustomerAuthController::class, 'logout']);
     Route::post('/auth/register', [CustomerAuthController::class, 'register']);
     Route::post('/auth/login', [CustomerAuthController::class, 'login']);
+    Route::post('/auth/verify-otp', [CustomerAuthController::class, 'verifyOtp']);
+    Route::post('/auth/resend-otp', [CustomerAuthController::class, 'resendOtp']);
     Route::put('/auth/profile', [CustomerAuthController::class, 'updateProfile']);
     Route::get('/auth/addresses', [CustomerAuthController::class, 'getAddresses']);
     Route::post('/auth/addresses', [CustomerAuthController::class, 'storeAddress']);
@@ -246,7 +248,13 @@ Route::prefix('adminv1')->group(function () {
 Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
     Route::get('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'index'])->name('admin.settings.index');
     Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('admin.settings.update');
+    Route::post('/settings/test-midtrans', [\App\Http\Controllers\Admin\SettingController::class, 'testMidtrans'])->name('admin.settings.test-midtrans');
+    Route::post('/settings/test-biteship', [\App\Http\Controllers\Admin\SettingController::class, 'testBiteship'])->name('admin.settings.test-biteship');
     
+    // Backup & Reset Data
+    Route::get('/settings/backup/download', [\App\Http\Controllers\Admin\SettingController::class, 'downloadBackup'])->name('admin.settings.backup.download');
+    Route::post('/settings/data/reset', [\App\Http\Controllers\Admin\SettingController::class, 'resetData'])->name('admin.settings.data.reset');
+
     // Banners management
     Route::post('/settings/banners', [\App\Http\Controllers\Admin\SettingController::class, 'storeBanner'])->name('admin.settings.banners.store');
     Route::post('/settings/banners/{id}/update', [\App\Http\Controllers\Admin\SettingController::class, 'updateBanner'])->name('admin.settings.banners.update');
@@ -258,6 +266,10 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
 
     // Payment Method management
     Route::post('/settings/payments/{id}/toggle', [\App\Http\Controllers\Admin\SettingController::class, 'togglePaymentMethod'])->name('admin.settings.payments.toggle');
+
+    // Reports Management
+    Route::get('/reports', [\App\Http\Controllers\Admin\ReportController::class, 'index'])->name('admin.reports.index');
+    Route::get('/reports/export-pdf', [\App\Http\Controllers\Admin\ReportController::class, 'exportPdf'])->name('admin.reports.export-pdf');
 
     // Review Management
     Route::get('/reviews', [\App\Http\Controllers\Admin\ReviewController::class, 'index'])->name('admin.reviews.index');

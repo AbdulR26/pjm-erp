@@ -15,11 +15,68 @@ class BiteshipService
 
     public function __construct()
     {
-        $this->apiKey = config('biteship.api_key') ?? '';
-        $this->isProduction = config('biteship.is_production', false);
-        $this->origin = config('biteship.origin') ?? [];
-        
+        $dbApiKey = \App\Models\Setting::get('biteship_api_key');
+        $this->apiKey = !empty($dbApiKey) ? $dbApiKey : (config('biteship.api_key') ?? '');
+
+        $dbIsProd = \App\Models\Setting::get('biteship_is_production');
+        if ($dbIsProd !== null) {
+            $this->isProduction = ($dbIsProd === '1' || $dbIsProd === 'true' || $dbIsProd === 1 || $dbIsProd === true);
+        } else {
+            $this->isProduction = config('biteship.is_production', false);
+        }
+
+        $dbPostalCode = \App\Models\Setting::get('biteship_origin_postal_code');
+        $dbLat = \App\Models\Setting::get('biteship_origin_latitude');
+        $dbLong = \App\Models\Setting::get('biteship_origin_longitude');
+
+        $this->origin = [
+            'postal_code' => !empty($dbPostalCode) ? $dbPostalCode : (config('biteship.origin.postal_code') ?? 10430),
+            'latitude'    => !empty($dbLat) ? (float) $dbLat : (config('biteship.origin.latitude') ?? -6.2088),
+            'longitude'   => !empty($dbLong) ? (float) $dbLong : (config('biteship.origin.longitude') ?? 106.8456),
+        ];
+
         $this->baseUrl = 'https://api.biteship.com';
+    }
+
+    public function testConnection(?string $testApiKey = null, ?bool $testIsProduction = null): array
+    {
+        $key = !empty($testApiKey) ? $testApiKey : $this->apiKey;
+        $isProd = ($testIsProduction !== null) ? $testIsProduction : $this->isProduction;
+
+        if (empty($key)) {
+            return [
+                'success' => false,
+                'message' => 'Biteship API Key belum diisi. Silakan masukkan API Key terlebih dahulu.'
+            ];
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'Authorization' => $key,
+            ])->get($this->baseUrl . '/v1/couriers');
+
+            if ($response->successful() && $response->json('success')) {
+                $couriers = $response->json('couriers', []);
+                $count = count($couriers);
+                $modeText = $isProd ? 'Production (Live)' : 'Testing (Sandbox)';
+                return [
+                    'success' => true,
+                    'message' => "Terkoneksi ke Biteship API [{$modeText}] ({$count} kurir aktif ditemukan)."
+                ];
+            }
+
+            $errorMsg = $response->json('error') ?: ($response->json('message') ?: 'HTTP ' . $response->status() . ' - API Key tidak valid.');
+            return [
+                'success' => false,
+                'message' => 'Gagal terhubung ke Biteship: ' . $errorMsg
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Gagal terhubung ke Biteship: ' . $e->getMessage()
+            ];
+        }
     }
 
     /**

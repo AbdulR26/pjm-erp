@@ -133,6 +133,14 @@
                 </a>
             </li>
 
+            <!-- Laporan -->
+            <li class="nav-item {{ request()->is('admin/reports*') ? 'active' : '' }}">
+                <a class="d-flex align-items-center" href="{{ route('admin.reports.index') }}">
+                    <i data-feather="file-text"></i>
+                    <span class="menu-title text-truncate">Laporan</span>
+                </a>
+            </li>
+
             <!-- Settings -->
             <li class="nav-item {{ request()->is('admin/settings*') ? 'active' : '' }}">
                 <a class="d-flex align-items-center" href="{{ route('admin.settings.index') }}">

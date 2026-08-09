@@ -18,19 +18,69 @@ class MidtransService
 
     public function __construct()
     {
-        $this->serverKey = config('midtrans.server_key') ?? '';
-        $this->clientKey = config('midtrans.client_key') ?? '';
-        $this->merchantId = config('midtrans.merchant_id') ?? '';
-        $this->isProduction = config('midtrans.is_production', false);
+        $dbServerKey = \App\Models\Setting::get('midtrans_server_key');
+        $dbClientKey = \App\Models\Setting::get('midtrans_client_key');
+        $dbMerchantId = \App\Models\Setting::get('midtrans_merchant_id');
+        $dbIsProd = \App\Models\Setting::get('midtrans_is_production');
+
+        $this->serverKey = !empty($dbServerKey) ? $dbServerKey : (config('midtrans.server_key') ?? '');
+        $this->clientKey = !empty($dbClientKey) ? $dbClientKey : (config('midtrans.client_key') ?? '');
+        $this->merchantId = !empty($dbMerchantId) ? $dbMerchantId : (config('midtrans.merchant_id') ?? '');
+        
+        if ($dbIsProd !== null) {
+            $this->isProduction = ($dbIsProd === '1' || $dbIsProd === 'true' || $dbIsProd === 1 || $dbIsProd === true);
+        } else {
+            $this->isProduction = config('midtrans.is_production', false);
+        }
         $this->is3ds = config('midtrans.is_3ds', true);
 
-        // Set URLs based on environment
         if ($this->isProduction) {
             $this->snapBaseUrl = 'https://app.midtrans.com/snap/v1';
             $this->apiBaseUrl = 'https://api.midtrans.com/v2';
         } else {
             $this->snapBaseUrl = 'https://app.sandbox.midtrans.com/snap/v1';
             $this->apiBaseUrl = 'https://api.sandbox.midtrans.com/v2';
+        }
+    }
+
+    public function testConnection(?string $testServerKey = null, ?bool $testIsProduction = null): array
+    {
+        $key = !empty($testServerKey) ? $testServerKey : $this->serverKey;
+        $isProd = ($testIsProduction !== null) ? $testIsProduction : $this->isProduction;
+        $baseUrl = $isProd ? 'https://api.midtrans.com/v2' : 'https://api.sandbox.midtrans.com/v2';
+
+        if (empty($key)) {
+            return [
+                'success' => false,
+                'message' => 'Server Key belum diisi. Silakan masukkan Server Key terlebih dahulu.'
+            ];
+        }
+
+        try {
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+                'Accept' => 'application/json',
+                'Authorization' => 'Basic ' . base64_encode($key . ':'),
+            ])->get($baseUrl . '/ping');
+
+            if ($response->successful()) {
+                $modeText = $isProd ? 'Production' : 'Sandbox (Testing)';
+                return [
+                    'success' => true,
+                    'message' => "Terkoneksi ke Midtrans API ({$modeText})."
+                ];
+            }
+
+            $statusMsg = $response->json('status_message') ?: ('HTTP ' . $response->status() . ' - Server Key tidak valid.');
+            return [
+                'success' => false,
+                'message' => 'Gagal terhubung ke Midtrans: ' . $statusMsg
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Gagal terhubung ke Midtrans: ' . $e->getMessage()
+            ];
         }
     }
 

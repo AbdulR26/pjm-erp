@@ -16,6 +16,8 @@ class Customer extends Model
     protected $fillable = [
         'name',
         'email',
+        'is_active',
+        'email_verified_at',
         'phone',
         'address',
         'postal_code',
@@ -25,6 +27,11 @@ class Customer extends Model
         'social_id',
         'avatar',
         'password',
+    ];
+
+    protected $casts = [
+        'is_active'         => 'boolean',
+        'email_verified_at' => 'datetime',
     ];
 
     protected $hidden = [

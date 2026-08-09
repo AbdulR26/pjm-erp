@@ -69,7 +69,7 @@ class OrderReturnCustomerController extends Controller
                 'reason_type' => $request->reason_type,
                 'customer_notes' => $request->customer_notes,
                 'status' => OrderReturn::STATUS_PENDING,
-                'return_shipping_fee_paid_by' => 'customer',
+                'return_shipping_fee_paid_by' => 'store',
             ]);
 
             // Save return items
@@ -184,7 +184,7 @@ class OrderReturnCustomerController extends Controller
                 'phone' => '081234567890',
                 'address' => 'Jl. Raya Putri Jaya Mobil No. 1, Jakarta Pusat',
                 'postal_code' => '10430',
-                'instructions' => 'Ongkos kirim pengembalian barang dibebankan kepada pembeli. Pastikan barang dikemas rapi dan aman.',
+                'instructions' => 'Ongkos kirim pengembalian barang dibebankan dan ditanggung oleh Pemilik Toko. Pastikan barang dikemas rapi dan aman.',
             ]
         ]);
     }

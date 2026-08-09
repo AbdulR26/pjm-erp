@@ -1,267 +1,471 @@
-import React from 'react';
-import { ShieldCheck, ArrowLeft, Mail, Lock, User, Phone } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, Mail, Lock, User, Phone, Eye, EyeOff, HelpCircle, ShieldCheck, ShoppingBag, CheckCircle2, KeyRound, RefreshCw, AlertCircle } from 'lucide-react';
 import useLoginPage from '../hooks/useLoginPage';
-import '../../css/login.css'; // Import external CSS
+import '../../css/login.css';
+import { getWhatsAppLink, getStoreName } from '../utils/helpers';
 
-// Google Icon SVG
-const GoogleIcon = () => (
-    <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg">
-        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-    </svg>
-);
-
-// Facebook Icon SVG
-const FacebookIcon = () => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="#fff" xmlns="http://www.w3.org/2000/svg">
-        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-    </svg>
-);
-
-export default function LoginPage({ onBack, reason, onLoginSuccess }) {
+export default function LoginPage({ onBack, reason, onLoginSuccess, settings = {} }) {
     const {
         activeTab,
         loading,
         errors,
         generalError,
+        needsActivation, setNeedsActivation,
+        unverifiedEmail,
+        otpDigits, setOtpDigits,
+        otpError,
+        resendMessage,
+        countdown,
+        formatTimer,
         name, setName,
         email, setEmail,
         phone, setPhone,
         password, setPassword,
-        handleGoogleLogin,
-        handleFacebookLogin,
         handleLoginSubmit,
         handleRegisterSubmit,
+        handleOtpChange,
+        handleVerifyOtpSubmit,
+        handleResendOtp,
         switchTab
     } = useLoginPage(onLoginSuccess);
 
+    const [showPassword, setShowPassword] = useState(false);
+    const storeName = getStoreName(settings);
+    const inputRefs = useRef([]);
+
+    // Auto-focus next input box for OTP
+    const handleDigitInput = (index, e) => {
+        const val = e.target.value;
+        handleOtpChange(index, val);
+
+        if (val && index < 5) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleKeyDown = (index, e) => {
+        if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+            inputRefs.current[index - 1]?.focus();
+        }
+    };
+
     return (
-        <div className="spg-page-container">
-            <div className="spg-wrap">
-                {/* Back Button */}
-                <button className="spg-back-btn" onClick={onBack}>
-                    <ArrowLeft size={14} />
-                    <span>Kembali Belanja</span>
-                </button>
-
-                <div className="spg-card">
-                    {/* Hero Section */}
-                    <div className="spg-hero">
-                        <div className="spg-hero-content">
-                            <div className="spg-brand">
-                                Putri Jaya Mobil
-                                <span>Official</span>
-                            </div>
-                            <div className="spg-hero-headline">
-                                {reason === 'checkout'
-                                    ? 'Selesaikan Pembelian Anda'
-                                    : 'Selamat Datang'}
-                            </div>
-                            <p className="spg-hero-sub">
-                                {reason === 'checkout'
-                                    ? 'Silakan masuk atau daftar untuk melanjutkan proses checkout yang aman.'
-                                    : 'Nikmati kemudahan berbelanja suku cadang dan aksesoris mobil premium.'}
-                            </p>
+        <div className="min-h-screen flex flex-col bg-slate-50 font-sans antialiased">
+            {/* Shopee-style Header (Red Store Theme) */}
+            <header className="h-[84px] bg-white border-b border-slate-100 shadow-xs sticky top-0 z-40">
+                <div className="max-w-[1200px] mx-auto px-4 md:px-8 h-full flex items-center justify-between">
+                    <div className="flex items-center gap-4 cursor-pointer" onClick={onBack}>
+                        <div className="flex items-center gap-2">
+                            {settings.logo_url ? (
+                                <img src={settings.logo_url} alt={storeName} className="h-10 w-auto object-contain" />
+                            ) : (
+                                <div className="w-10 h-10 rounded-2xl bg-red-600 text-white font-black flex items-center justify-center text-xl shadow-md">
+                                    P
+                                </div>
+                            )}
+                            <span className="font-extrabold text-slate-800 text-xl tracking-tight hidden sm:inline">
+                                {storeName}
+                            </span>
                         </div>
+                        <span className="h-6 w-px bg-slate-200"></span>
+                        <h1 className="text-slate-800 font-extrabold text-lg sm:text-xl">
+                            {needsActivation ? 'Aktivasi OTP' : (activeTab === 'login' ? 'Masuk' : 'Daftar')}
+                        </h1>
                     </div>
 
-                    {/* Tab Navigation */}
-                    <div className="spg-tabs">
-                        <button
-                            className={`spg-tab-btn ${activeTab === 'login' ? 'active' : ''}`}
-                            onClick={() => switchTab('login')}
+                    <div className="flex items-center gap-4 text-xs font-semibold">
+                        <a
+                            href={getWhatsAppLink(settings, "Halo, saya butuh bantuan mengenai aktivasi akun / OTP di Putri Jaya Mobil.")}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-red-600 hover:underline flex items-center gap-1.5 font-bold"
                         >
-                            Masuk (Login)
-                        </button>
+                            <HelpCircle size={15} />
+                            <span>Butuh bantuan?</span>
+                        </a>
+
                         <button
-                            className={`spg-tab-btn ${activeTab === 'register' ? 'active' : ''}`}
-                            onClick={() => switchTab('register')}
+                            onClick={onBack}
+                            className="flex items-center gap-1.5 text-slate-600 hover:text-red-600 bg-slate-100 hover:bg-red-50 px-3.5 py-2 rounded-xl transition cursor-pointer font-bold"
                         >
-                            Daftar Akun Baru
+                            <ArrowLeft size={14} />
+                            <span>Ke Beranda</span>
                         </button>
-                    </div>
-
-                    {/* Form Section */}
-                    <div className="spg-form">
-                        {generalError && (
-                            <div className="spg-alert">
-                                {generalError}
-                            </div>
-                        )}
-
-                        {activeTab === 'login' ? (
-                            <form onSubmit={handleLoginSubmit}>
-                                {/* Email */}
-                                <div className="spg-input-group">
-                                    <label className="spg-label">Alamat Email</label>
-                                    <div className="spg-input-wrapper">
-                                        <Mail size={16} className="spg-input-icon" />
-                                        <input
-                                            type="email"
-                                            className={`spg-input ${errors.email ? 'has-error' : ''}`}
-                                            placeholder="Masukkan email Anda"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            disabled={loading}
-                                            required
-                                        />
-                                    </div>
-                                    {errors.email && <span className="spg-error-text">{errors.email}</span>}
-                                </div>
-
-                                {/* Password */}
-                                <div className="spg-input-group">
-                                    <label className="spg-label">Password</label>
-                                    <div className="spg-input-wrapper">
-                                        <Lock size={16} className="spg-input-icon" />
-                                        <input
-                                            type="password"
-                                            className={`spg-input ${errors.password ? 'has-error' : ''}`}
-                                            placeholder="Masukkan password Anda"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            disabled={loading}
-                                            required
-                                        />
-                                    </div>
-                                    {errors.password && <span className="spg-error-text">{errors.password}</span>}
-                                </div>
-
-                                <button type="submit" className="spg-submit-btn" disabled={loading}>
-                                    {loading ? (
-                                        <>
-                                            <div className="spg-spinner" />
-                                            <span>Memproses...</span>
-                                        </>
-                                    ) : (
-                                        <span>Masuk Sekarang</span>
-                                    )}
-                                </button>
-                            </form>
-                        ) : (
-                            <form onSubmit={handleRegisterSubmit}>
-                                {/* Nama Lengkap */}
-                                <div className="spg-input-group">
-                                    <label className="spg-label">Nama Lengkap</label>
-                                    <div className="spg-input-wrapper">
-                                        <User size={16} className="spg-input-icon" />
-                                        <input
-                                            type="text"
-                                            className={`spg-input ${errors.name ? 'has-error' : ''}`}
-                                            placeholder="Masukkan nama lengkap Anda"
-                                            value={name}
-                                            onChange={(e) => setName(e.target.value)}
-                                            disabled={loading}
-                                            required
-                                        />
-                                    </div>
-                                    {errors.name && <span className="spg-error-text">{errors.name}</span>}
-                                </div>
-
-                                {/* Email */}
-                                <div className="spg-input-group">
-                                    <label className="spg-label">Alamat Email</label>
-                                    <div className="spg-input-wrapper">
-                                        <Mail size={16} className="spg-input-icon" />
-                                        <input
-                                            type="email"
-                                            className={`spg-input ${errors.email ? 'has-error' : ''}`}
-                                            placeholder="contoh@email.com"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            disabled={loading}
-                                            required
-                                        />
-                                    </div>
-                                    {errors.email && <span className="spg-error-text">{errors.email}</span>}
-                                </div>
-
-                                {/* WhatsApp/No. Telp */}
-                                <div className="spg-input-group">
-                                    <label className="spg-label">Nomor WhatsApp</label>
-                                    <div className="spg-input-wrapper">
-                                        <Phone size={16} className="spg-input-icon" />
-                                        <input
-                                            type="tel"
-                                            className={`spg-input ${errors.phone ? 'has-error' : ''}`}
-                                            placeholder="Contoh: 081234567890"
-                                            value={phone}
-                                            onChange={(e) => setPhone(e.target.value)}
-                                            disabled={loading}
-                                            required
-                                        />
-                                    </div>
-                                    {errors.phone && <span className="spg-error-text">{errors.phone}</span>}
-                                </div>
-
-                                {/* Password */}
-                                <div className="spg-input-group">
-                                    <label className="spg-label">Password (Min. 6 Karakter)</label>
-                                    <div className="spg-input-wrapper">
-                                        <Lock size={16} className="spg-input-icon" />
-                                        <input
-                                            type="password"
-                                            className={`spg-input ${errors.password ? 'has-error' : ''}`}
-                                            placeholder="Buat password baru"
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            disabled={loading}
-                                            required
-                                        />
-                                    </div>
-                                    {errors.password && <span className="spg-error-text">{errors.password}</span>}
-                                </div>
-
-                                <button type="submit" className="spg-submit-btn" disabled={loading}>
-                                    {loading ? (
-                                        <>
-                                            <div className="spg-spinner" />
-                                            <span>Mendaftar...</span>
-                                        </>
-                                    ) : (
-                                        <span>Daftar Akun Baru</span>
-                                    )}
-                                </button>
-                            </form>
-                        )}
-
-                        {/* Divider */}
-                        <div className="spg-divider">
-                            <div className="spg-divider-line" />
-                            <span className="spg-divider-text">atau masuk dengan</span>
-                            <div className="spg-divider-line" />
-                        </div>
-
-                        {/* Social Media Login */}
-                        <div style={{ display: 'flex', gap: '10px', marginBottom: '16px' }}>
-                            {/* Google */}
-                            <button type="button" className="spg-btn spg-btn-google" onClick={handleGoogleLogin}>
-                                <GoogleIcon />
-                                <span>Google</span>
-                            </button>
-
-                            {/* Facebook */}
-                            <button type="button" className="spg-btn spg-btn-facebook" onClick={handleFacebookLogin}>
-                                <FacebookIcon />
-                                <span>Facebook</span>
-                            </button>
-                        </div>
-
-                        {/* Skip */}
-                        <button className="spg-btn-skip" onClick={onBack}>
-                            Lanjut Belanja Tanpa Login
-                        </button>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="spg-footer">
-                        <ShieldCheck size={12} color="#52c41a" />
-                        <span className="spg-footer-txt">Data Anda aman & tidak akan dibagikan ke pihak ketiga</span>
                     </div>
                 </div>
-            </div>
+            </header>
+
+            {/* Shopee-style Hero Banner & Form Body */}
+            <main className="grow bg-linear-to-r from-red-600 via-red-700 to-red-950 py-8 md:py-14 flex items-center relative overflow-hidden">
+                {/* Decorative background elements */}
+                <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/10 blur-2xl pointer-events-none"></div>
+                <div className="absolute -bottom-32 -right-32 w-[500px] h-[500px] rounded-full bg-black/20 blur-3xl pointer-events-none"></div>
+
+                <div className="max-w-[1200px] mx-auto px-4 md:px-8 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+                    
+                    {/* Left Column: Store Branding & Features */}
+                    <div className="hidden lg:flex lg:col-span-7 flex-col justify-center text-white space-y-6 pr-6">
+                        <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold w-fit tracking-wide uppercase border border-white/20">
+                            <ShoppingBag size={14} /> Official Store Otomotif
+                        </div>
+
+                        <h2 className="text-3xl lg:text-4xl font-black leading-tight tracking-tight">
+                            Pusat Suku Cadang & Aksesoris Mobil Terlengkap
+                        </h2>
+
+                        <p className="text-white/90 text-sm font-medium leading-relaxed max-w-lg">
+                            Nikmati kemudahan transaksi, jaminan sparepart original 100%, pengiriman cepat, dan penawaran diskon eksklusif bagi pelanggan setia {storeName}.
+                        </p>
+
+                        <div className="space-y-3 pt-2">
+                            <div className="flex items-center gap-3 text-sm font-semibold">
+                                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 size={16} />
+                                </div>
+                                <span>Ribuan Produk Sparepart & Aksesoris Teruji</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-sm font-semibold">
+                                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 size={16} />
+                                </div>
+                                <span>Aktivasi Akun Aman dengan Verifikasi Kode OTP Email</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-sm font-semibold">
+                                <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                                    <CheckCircle2 size={16} />
+                                </div>
+                                <span>Keamanan Transaksi & Data Pengguna Terjamin</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Column: Card (Login / Register OR OTP Screen) */}
+                    <div className="lg:col-span-5 w-full flex justify-center lg:justify-end">
+                        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-100 w-full max-w-[430px] transition-all duration-300">
+                            
+                            {needsActivation ? (
+                                /* ─── OTP VERIFICATION FORM ─── */
+                                <div className="space-y-5">
+                                    <div className="text-center space-y-2">
+                                        <div className="w-14 h-14 bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-2 shadow-xs">
+                                            <KeyRound size={28} />
+                                        </div>
+                                        <h2 className="text-xl font-extrabold text-slate-800">Verifikasi Kode OTP</h2>
+                                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                                            Masukkan 6 digit kode OTP yang dikirimkan ke email:<br />
+                                            <strong className="text-slate-800">{unverifiedEmail}</strong>
+                                        </p>
+                                    </div>
+
+                                    {otpError && (
+                                        <div className="bg-rose-50 border border-rose-200 text-rose-700 p-3 rounded-2xl text-xs font-bold flex items-center gap-2">
+                                            <AlertCircle size={16} className="shrink-0" />
+                                            <span>{otpError}</span>
+                                        </div>
+                                    )}
+
+                                    {resendMessage && (
+                                        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 p-3 rounded-2xl text-xs font-bold flex items-center gap-2">
+                                            <CheckCircle2 size={16} className="shrink-0 text-emerald-600" />
+                                            <span>{resendMessage}</span>
+                                        </div>
+                                    )}
+
+                                    <form onSubmit={handleVerifyOtpSubmit} className="space-y-5">
+                                        {/* 6 Digit Inputs */}
+                                        <div className="flex justify-between gap-1.5 sm:gap-2">
+                                            {otpDigits.map((digit, idx) => (
+                                                <input
+                                                    key={idx}
+                                                    ref={(el) => (inputRefs.current[idx] = el)}
+                                                    type="text"
+                                                    maxLength="1"
+                                                    value={digit}
+                                                    onChange={(e) => handleDigitInput(idx, e)}
+                                                    onKeyDown={(e) => handleKeyDown(idx, e)}
+                                                    className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl font-black text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:border-red-600 focus:bg-white focus:ring-2 focus:ring-red-100 transition font-mono"
+                                                    required
+                                                />
+                                            ))}
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={loading}
+                                            className="w-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-sm py-3.5 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider disabled:opacity-50"
+                                        >
+                                            {loading ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                    <span>Memverifikasi...</span>
+                                                </>
+                                            ) : (
+                                                <span>VERIFIKASI & AKTIFKAN</span>
+                                            )}
+                                        </button>
+                                    </form>
+
+                                    <div className="pt-2 border-t border-slate-100 flex flex-col items-center space-y-3 text-xs">
+                                        {countdown > 0 ? (
+                                            <div className="flex items-center gap-1.5 text-slate-500 font-bold bg-slate-100 px-3.5 py-2 rounded-full border border-slate-200">
+                                                <RefreshCw size={13} className="animate-spin text-red-600 shrink-0" />
+                                                <span>Kirim ulang OTP dalam <strong className="text-red-600 font-mono text-xs">{formatTimer(countdown)}</strong></span>
+                                            </div>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={handleResendOtp}
+                                                disabled={loading}
+                                                className="text-red-600 hover:text-red-700 font-extrabold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition hover:scale-105"
+                                            >
+                                                <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+                                                <span>Kirim Ulang Kode OTP</span>
+                                            </button>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setNeedsActivation(false)}
+                                            className="text-slate-400 hover:text-slate-600 font-semibold cursor-pointer"
+                                        >
+                                            Kembali ke Form Login
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* ─── NORMAL LOGIN / REGISTER FORM ─── */
+                                <>
+                                    {/* Tab Switcher */}
+                                    <div className="flex border-b border-slate-100 mb-6">
+                                        <button
+                                            type="button"
+                                            onClick={() => switchTab('login')}
+                                            className={`flex-1 pb-3 text-center text-sm font-extrabold transition relative ${
+                                                activeTab === 'login'
+                                                    ? 'text-red-600'
+                                                    : 'text-slate-400 hover:text-slate-600'
+                                            }`}
+                                        >
+                                            Log In (Masuk)
+                                            {activeTab === 'login' && (
+                                                <span className="absolute bottom-0 left-0 right-0 h-1 bg-red-600 rounded-t-full animate-in fade-in duration-150"></span>
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => switchTab('register')}
+                                            className={`flex-1 pb-3 text-center text-sm font-extrabold transition relative ${
+                                                activeTab === 'register'
+                                                    ? 'text-red-600'
+                                                    : 'text-slate-400 hover:text-slate-600'
+                                            }`}
+                                        >
+                                            Daftar Akun Baru
+                                            {activeTab === 'register' && (
+                                                <span className="absolute bottom-0 left-0 right-0 h-1 bg-red-600 rounded-t-full animate-in fade-in duration-150"></span>
+                                            )}
+                                        </button>
+                                    </div>
+
+                                    {/* Checkout Alert Reason */}
+                                    {reason === 'checkout' && (
+                                        <div className="bg-red-50 border border-red-200 text-red-600 p-3.5 rounded-2xl text-xs font-bold mb-5 flex items-center gap-2">
+                                            <ShoppingBag size={16} className="shrink-0" />
+                                            <span>Silakan masuk atau daftar terlebih dahulu untuk melanjutkan proses checkout.</span>
+                                        </div>
+                                    )}
+
+                                    {/* General Error Notice */}
+                                    {generalError && (
+                                        <div className="bg-rose-50 border border-rose-200 text-rose-600 p-3.5 rounded-2xl text-xs font-bold mb-5">
+                                            {generalError}
+                                        </div>
+                                    )}
+
+                                    {/* Form Login */}
+                                    {activeTab === 'login' ? (
+                                        <form onSubmit={handleLoginSubmit} className="space-y-4">
+                                            <div className="space-y-1">
+                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Email</label>
+                                                <div className="relative">
+                                                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type="email"
+                                                        className={`w-full bg-slate-50 border ${errors.email ? 'border-rose-500' : 'border-slate-200'} rounded-xl pl-10 pr-4 py-3 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-red-600 focus:bg-white transition`}
+                                                        placeholder="Masukkan email Anda"
+                                                        value={email}
+                                                        onChange={(e) => setEmail(e.target.value)}
+                                                        disabled={loading}
+                                                        required
+                                                    />
+                                                </div>
+                                                {errors.email && <span className="text-[11px] font-bold text-rose-500">{errors.email}</span>}
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
+                                                <div className="relative">
+                                                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type={showPassword ? "text" : "password"}
+                                                        className={`w-full bg-slate-50 border ${errors.password ? 'border-rose-500' : 'border-slate-200'} rounded-xl pl-10 pr-10 py-3 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-red-600 focus:bg-white transition`}
+                                                        placeholder="Masukkan password Anda"
+                                                        value={password}
+                                                        onChange={(e) => setPassword(e.target.value)}
+                                                        disabled={loading}
+                                                        required
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                                    >
+                                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                    </button>
+                                                </div>
+                                                {errors.password && <span className="text-[11px] font-bold text-rose-500">{errors.password}</span>}
+                                            </div>
+
+                                            <button
+                                                type="submit"
+                                                disabled={loading}
+                                                className="w-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-sm py-3.5 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider disabled:opacity-50 mt-2"
+                                            >
+                                                {loading ? (
+                                                    <>
+                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                        <span>Memproses...</span>
+                                                    </>
+                                                ) : (
+                                                    <span>LOG IN</span>
+                                                )}
+                                            </button>
+                                        </form>
+                                    ) : (
+                                        /* Form Register */
+                                        <form onSubmit={handleRegisterSubmit} className="space-y-3.5">
+                                            <div className="space-y-1">
+                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Nama Lengkap</label>
+                                                <div className="relative">
+                                                    <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type="text"
+                                                        className={`w-full bg-slate-50 border ${errors.name ? 'border-rose-500' : 'border-slate-200'} rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-red-600 focus:bg-white transition`}
+                                                        placeholder="Nama sesuai KTP/ID"
+                                                        value={name}
+                                                        onChange={(e) => setName(e.target.value)}
+                                                        disabled={loading}
+                                                        required
+                                                    />
+                                                </div>
+                                                {errors.name && <span className="text-[11px] font-bold text-rose-500">{errors.name}</span>}
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Alamat Email</label>
+                                                <div className="relative">
+                                                    <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type="email"
+                                                        className={`w-full bg-slate-50 border ${errors.email ? 'border-rose-500' : 'border-slate-200'} rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-red-600 focus:bg-white transition`}
+                                                        placeholder="contoh@email.com"
+                                                        value={email}
+                                                        onChange={(e) => setEmail(e.target.value)}
+                                                        disabled={loading}
+                                                        required
+                                                    />
+                                                </div>
+                                                {errors.email && <span className="text-[11px] font-bold text-rose-500">{errors.email}</span>}
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">No. WhatsApp</label>
+                                                <div className="relative">
+                                                    <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type="tel"
+                                                        className={`w-full bg-slate-50 border ${errors.phone ? 'border-rose-500' : 'border-slate-200'} rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-red-600 focus:bg-white transition`}
+                                                        placeholder="Contoh: 081234567890"
+                                                        value={phone}
+                                                        onChange={(e) => setPhone(e.target.value)}
+                                                        disabled={loading}
+                                                        required
+                                                    />
+                                                </div>
+                                                {errors.phone && <span className="text-[11px] font-bold text-rose-500">{errors.phone}</span>}
+                                            </div>
+
+                                            <div className="space-y-1">
+                                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Password Baru</label>
+                                                <div className="relative">
+                                                    <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input
+                                                        type={showPassword ? "text" : "password"}
+                                                        className={`w-full bg-slate-50 border ${errors.password ? 'border-rose-500' : 'border-slate-200'} rounded-xl pl-10 pr-10 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 focus:outline-none focus:border-red-600 focus:bg-white transition`}
+                                                        placeholder="Minimal 6 karakter"
+                                                        value={password}
+                                                        onChange={(e) => setPassword(e.target.value)}
+                                                        disabled={loading}
+                                                        required
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                                    >
+                                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                                    </button>
+                                                </div>
+                                                {errors.password && <span className="text-[11px] font-bold text-rose-500">{errors.password}</span>}
+                                            </div>
+
+                                            <button
+                                                type="submit"
+                                                disabled={loading}
+                                                className="w-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-extrabold text-sm py-3.5 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer uppercase tracking-wider disabled:opacity-50 mt-2"
+                                            >
+                                                {loading ? (
+                                                    <>
+                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                        <span>Memproses...</span>
+                                                    </>
+                                                ) : (
+                                                    <span>DAFTAR AKUN</span>
+                                                )}
+                                            </button>
+                                        </form>
+                                    )}
+                                </>
+                            )}
+
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            {/* Shopee-style Footer */}
+            <footer className="bg-slate-100 border-t border-slate-200 py-8">
+                <div className="max-w-[1200px] mx-auto px-4 md:px-8 text-center text-xs text-slate-500 space-y-4">
+                    <div className="flex flex-wrap justify-center gap-4 font-semibold text-slate-600">
+                        <a href="/?page=home" onClick={(e) => { e.preventDefault(); onBack(); }} className="hover:text-red-600 transition">Beranda</a>
+                        <span>•</span>
+                        <a href={getWhatsAppLink(settings, "Halo CS, saya butuh bantuan.")} target="_blank" rel="noopener noreferrer" className="hover:text-red-600 transition">Pusat Bantuan</a>
+                        <span>•</span>
+                        <span className="hover:text-red-600 cursor-pointer">Syarat & Ketentuan</span>
+                        <span>•</span>
+                        <span className="hover:text-red-600 cursor-pointer">Kebijakan Privasi</span>
+                    </div>
+
+                    <div className="flex items-center justify-center gap-1.5 text-slate-400 font-medium">
+                        <ShieldCheck size={14} className="text-emerald-500" />
+                        <span>Data login Anda dienkripsi aman & tidak dibagikan ke pihak ketiga.</span>
+                    </div>
+
+                    <p className="text-[11px] text-slate-400">
+                        © {new Date().getFullYear()} {storeName}. Seluruh Hak Cipta Dilindungi.
+                    </p>
+                </div>
+            </footer>
         </div>
     );
 }

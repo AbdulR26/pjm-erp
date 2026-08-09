@@ -81,12 +81,12 @@ export default function OrderWaybillModal({ isOpen, onClose, returnData, onSucce
                         </div>
                     )}
 
-                    <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-xs space-y-1.5">
-                        <p className="font-bold text-slate-800 flex items-center gap-1.5">
-                            <CheckCircle size={14} className="text-emerald-500" /> Pengajuan Disetujui Admin
+                    <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-4 text-xs space-y-1.5">
+                        <p className="font-bold text-emerald-900 flex items-center gap-1.5">
+                            <CheckCircle size={14} className="text-emerald-600" /> Pengajuan Disetujui Admin
                         </p>
-                        <p className="text-slate-600 text-[11px] leading-relaxed">
-                            Kirim barang retur ke alamat gudang toko kami dan masukkan nomor resi di bawah. Ongkos kirim pengembalian ditanggung pembeli.
+                        <p className="text-emerald-800 text-[11px] leading-relaxed">
+                            Kirim barang retur ke alamat gudang toko kami dan masukkan nomor resi di bawah. Biaya ongkos kirim pengembalian ditanggung oleh Toko.
                         </p>
                     </div>
 
