@@ -147,7 +147,7 @@
                         </span>
                     </div>
                     <h1 class="text-white font-weight-bolder display-4 mb-1" style="line-height: 1.2;">
-                        Sistem Manajemen Dashboard ERP PJM
+                        Sistem Manajemen Dashboard ERP {{ $appSetting->app_short_name ?: $appSetting->app_name }}
                     </h1>
                     <p class="text-white-50 font-medium" style="font-size: 1.1rem; max-width: 540px;">
                         Kelola data inventori, transaksi pesanan, keuangan, retur barang, dan manajemen pelanggan secara terpusat & real-time.

@@ -74,7 +74,7 @@ export default function ProductInfo({
                         )}
                     </div>
                     <div className="flex items-center space-x-2.5 text-[10px] text-red-650 font-bold mt-2">
-                        <span className="border border-red-650 px-1.5 py-0.5 rounded uppercase">Garansi PJM</span>
+                        <span className="border border-red-650 px-1.5 py-0.5 rounded uppercase">Garansi {settings.app_short_name || settings.store_name || 'Toko'}</span>
                         <span>100% Produk Asli & Orisinil Pabrik</span>
                     </div>
                 </div>
