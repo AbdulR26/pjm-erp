@@ -141,8 +141,7 @@ class AdminOrderReturnController extends Controller
             $proofPath = $return->manual_transfer_proof;
             if ($request->hasFile('manual_transfer_proof')) {
                 $file = $request->file('manual_transfer_proof');
-                $stored = $file->store('refund-proofs', 'public');
-                $proofPath = '/storage/' . $stored;
+                $proofPath = $file->store('refund-proofs', 'r2');
             }
 
             // Execute Midtrans Refund API if selected and valid

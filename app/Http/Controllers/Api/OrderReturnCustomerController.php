@@ -95,13 +95,13 @@ class OrderReturnCustomerController extends Controller
             // Save uploaded proof media (photos and videos)
             if ($request->hasFile('media')) {
                 foreach ($request->file('media') as $file) {
-                    $path = $file->store('order-returns', 'public');
+                    $path = $file->store('order-returns', 'r2');
                     $mime = $file->getMimeType();
                     $type = str_contains($mime, 'video') ? 'video' : 'image';
 
                     OrderReturnMedia::create([
                         'order_return_id' => $orderReturn->id,
-                        'file_path' => '/storage/' . $path,
+                        'file_path' => $path,
                         'file_type' => $type,
                         'file_name' => $file->getClientOriginalName(),
                     ]);
