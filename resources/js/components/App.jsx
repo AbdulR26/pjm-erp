@@ -91,6 +91,10 @@ function AppContent() {
             setProducts(productsData);
             setCategories(categoriesData);
             setSettings(settingsData);
+            if (settingsData && (settingsData.app_name || settingsData.store_name)) {
+                const name = settingsData.store_name || settingsData.app_name;
+                document.title = `${name} - E-Commerce Otomotif Premium`;
+            }
             if (meData && meData.id) {
                 setCurrentUser(meData);
             } else {

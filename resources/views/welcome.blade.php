@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <meta name="description" content="Putri Jaya Mobil - Platform E-Commerce Otomotif Terlengkap & Terpercaya. Beli Mobil Baru, Suku Cadang Asli, Aksesoris Premium, dan Booking Layanan Servis Terbaik.">
-    <title>Putri Jaya Mobil - E-Commerce Otomotif Premium</title>
+    <meta name="description" content="{{ $appSetting->app_name }} - Platform E-Commerce Otomotif Terlengkap & Terpercaya. Beli Suku Cadang Asli, Aksesoris Premium, dan Komponen Terbaik.">
+    <title>{{ $appSetting->app_name }} - E-Commerce Otomotif Premium</title>
+    
+    <link rel="apple-touch-icon" href="{{ \App\Helpers\StorageHelper::url($appSetting->logo) ?: asset('template/app-assets/images/ico/logo2.png') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ \App\Helpers\StorageHelper::url($appSetting->logo_favicon) ?: asset('template/app-assets/images/ico/favicon.ico') }}">
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">

@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Print Invoices</title>
+    <title>Faktur Penjualan - {{ $appSetting->app_name }}</title>
     <style>
         body {
             font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;

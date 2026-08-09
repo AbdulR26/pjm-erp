@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Print Labels</title>
+    <title>Label Pengiriman - {{ $appSetting->app_name }}</title>
     <style>
         body {
             font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
