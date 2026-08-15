@@ -93,6 +93,14 @@
                 </a>
             </li>
 
+            <!-- Manajemen Data Olshop -->
+            <li class="nav-item {{ request()->is('admin/olshop*') ? 'active' : '' }}">
+                <a class="d-flex align-items-center" href="{{ route('admin.olshop.index') }}">
+                    <i data-feather="shopping-bag"></i>
+                    <span class="menu-title text-truncate">Manajemen Data Olshop</span>
+                </a>
+            </li>
+
             <!-- Vouchers -->
             <li class="nav-item {{ request()->is('admin/vouchers*') ? 'active' : '' }}">
                 <a class="d-flex align-items-center" href="{{ route('admin.vouchers.index') }}">

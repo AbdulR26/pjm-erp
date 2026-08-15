@@ -250,6 +250,13 @@ Route::group(['prefix' => 'admin', 'middleware' => ['auth']], function () {
     Route::post('/settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])->name('admin.settings.update');
     Route::post('/settings/test-midtrans', [\App\Http\Controllers\Admin\SettingController::class, 'testMidtrans'])->name('admin.settings.test-midtrans');
     Route::post('/settings/test-biteship', [\App\Http\Controllers\Admin\SettingController::class, 'testBiteship'])->name('admin.settings.test-biteship');
+
+    // Manajemen Data Olshop (Tokopedia, TikTok Shop, Shopee)
+    Route::get('/olshop', [\App\Http\Controllers\Admin\OlshopManagementController::class, 'index'])->name('admin.olshop.index');
+    Route::post('/olshop/clone-product', [\App\Http\Controllers\Admin\OlshopManagementController::class, 'cloneProduct'])->name('admin.olshop.clone-product');
+    Route::post('/olshop/sync-orders', [\App\Http\Controllers\Admin\OlshopManagementController::class, 'syncOrders'])->name('admin.olshop.sync-orders');
+    Route::post('/olshop/test-connection', [\App\Http\Controllers\Admin\OlshopManagementController::class, 'testConnection'])->name('admin.olshop.test-connection');
+    Route::get('/olshop/orders/{id}/print-resi', [\App\Http\Controllers\Admin\OlshopManagementController::class, 'printResi'])->name('admin.olshop.print-resi');
     
     // Backup & Reset Data
     Route::get('/settings/backup/download', [\App\Http\Controllers\Admin\SettingController::class, 'downloadBackup'])->name('admin.settings.backup.download');
