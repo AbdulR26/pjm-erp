@@ -113,13 +113,18 @@ export default function HeroCarousel() {
                         rel="noopener noreferrer"
                         className="absolute inset-0 z-30"
                     />
-                    <div className="absolute inset-0 bg-linear-to-r from-red-800/90 to-red-950/60 z-10" />
                     <img
                         src={side1.image}
                         alt={side1.title}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                        onError={(e) => { e.target.src = '/images/default-product.png'; }}
+                        className="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500"
+                        onError={(e) => {
+                            if (!e.target.dataset.failed) {
+                                e.target.dataset.failed = "true";
+                                e.target.src = 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=400&q=80';
+                            }
+                        }}
                     />
+                    <div className="absolute inset-0 bg-linear-to-r from-red-950/85 via-red-900/40 to-transparent z-10" />
                     <div className="absolute inset-0 flex flex-col justify-center px-5 z-20 text-white">
                         <span className="text-[9px] font-bold text-yellow-400 uppercase tracking-widest mb-1">{side1.badge}</span>
                         <h3 className="font-bold text-sm md:text-base leading-tight mb-1 whitespace-pre-line">
@@ -137,13 +142,18 @@ export default function HeroCarousel() {
                         rel="noopener noreferrer"
                         className="absolute inset-0 z-30"
                     />
-                    <div className="absolute inset-0 bg-linear-to-r from-red-900/95 to-red-950/65 z-10" />
                     <img
                         src={side2.image}
                         alt={side2.title}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                        onError={(e) => { e.target.src = '/images/default-product.png'; }}
+                        className="absolute inset-0 w-full h-full object-cover z-0 group-hover:scale-105 transition duration-500"
+                        onError={(e) => {
+                            if (!e.target.dataset.failed) {
+                                e.target.dataset.failed = "true";
+                                e.target.src = 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=400&q=80';
+                            }
+                        }}
                     />
+                    <div className="absolute inset-0 bg-linear-to-r from-red-950/85 via-red-900/40 to-transparent z-10" />
                     <div className="absolute inset-0 flex flex-col justify-center px-5 z-20 text-white">
                         <span className="text-[9px] font-bold text-yellow-400 uppercase tracking-widest mb-1">{side2.badge}</span>
                         <h3 className="font-bold text-sm md:text-base leading-tight mb-1 whitespace-pre-line">
