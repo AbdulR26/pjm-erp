@@ -40,25 +40,34 @@ class PublicProductController extends Controller
         return response()->json($categories);
     }
 
-    /**
-     * Get list of active banners for the client homepage carousel.
-     */
     public function banners()
     {
-        $banners = Banner::where('is_active', true)->orderBy('order')->get();
+        $banners = Banner::where('is_active', true)->orderBy('order')->get()->map(function ($banner) {
+            if ($banner->image) {
+                $banner->image = \App\Helpers\StorageHelper::url($banner->image);
+            }
+            return $banner;
+        });
         return response()->json($banners);
     }
 
-    /**
-     * Get list of store settings.
-     */
     public function settings()
     {
         $settings = Setting::all()->pluck('value', 'key');
+
+        $imageKeys = ['side_banner_1_image', 'side_banner_2_image', 'logo', 'logo_favicon'];
+        foreach ($imageKeys as $key) {
+            if (isset($settings[$key]) && $settings[$key]) {
+                $settings[$key] = \App\Helpers\StorageHelper::url($settings[$key]);
+            }
+        }
+        if (isset($settings['logo'])) {
+            $settings['logo_url'] = $settings['logo'];
+        }
+
         $settings['midtrans_client_key'] = config('midtrans.client_key');
         $settings['midtrans_is_production'] = config('midtrans.is_production');
 
-        // Dynamic flash sale end time based on currently active flash sale products
         $now = now();
         $activeFlashSaleEnd = Product::where('is_flash_sale', true)
             ->whereNotNull('flash_sale_end')

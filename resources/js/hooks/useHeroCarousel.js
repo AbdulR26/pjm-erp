@@ -49,11 +49,17 @@ export default function useHeroCarousel() {
         `Halo ${getStoreName(settings)}, saya ingin konsultasi mengenai spesifikasi suku cadang mobil saya.`
     );
 
+    const formatImageUrl = (url) => {
+        if (!url) return null;
+        if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        return url.startsWith('/') ? url : `/${url}`;
+    };
+
     const side1 = {
         badge: settings.side_banner_1_badge || 'KONSULTASI GRATIS',
         title: settings.side_banner_1_title || 'Bingung Cari\nPart Number / Seri?',
         subtitle: settings.side_banner_1_subtitle || 'Kirim foto STNK & part Anda ke WhatsApp kami!',
-        image: settings.side_banner_1_image || 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=400&q=80',
+        image: formatImageUrl(settings.side_banner_1_image) || 'https://images.unsplash.com/photo-1563720223185-11003d516935?auto=format&fit=crop&w=400&q=80',
         link: settings.side_banner_1_link || defaultWaLink
     };
 
@@ -61,7 +67,7 @@ export default function useHeroCarousel() {
         badge: settings.side_banner_2_badge || 'JAMINAN ORISINIL',
         title: settings.side_banner_2_title || '100% Suku Cadang Asli',
         subtitle: settings.side_banner_2_subtitle || 'Garansi uang kembali penuh jika palsu.',
-        image: settings.side_banner_2_image || 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=400&q=80',
+        image: formatImageUrl(settings.side_banner_2_image) || 'https://images.unsplash.com/photo-1486006920555-c77dce18193b?auto=format&fit=crop&w=400&q=80',
         link: settings.side_banner_2_link || '#'
     };
 
