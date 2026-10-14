@@ -624,7 +624,11 @@ class PublicOrderController extends Controller
             return response()->json(['rates' => $rates]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('Public rates error: ' . $e->getMessage());
-            return response()->json(['message' => 'Gagal mendapatkan ongkos kirim: ' . $e->getMessage()], 500);
+            $errorMsg = $e->getMessage();
+            if (str_contains($errorMsg, 'cURL error 28') || str_contains($errorMsg, 'timed out')) {
+                $errorMsg = 'Koneksi ke server ekspedisi Biteship mengalami batas waktu (timeout). Silakan coba sesaat lagi atau pastikan koneksi server online Anda dapat mengakses api.biteship.com.';
+            }
+            return response()->json(['message' => 'Gagal mendapatkan ongkos kirim: ' . $errorMsg], 500);
         }
     }
 

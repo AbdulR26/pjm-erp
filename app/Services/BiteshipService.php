@@ -51,10 +51,7 @@ class BiteshipService
         }
 
         try {
-            $response = Http::withHeaders([
-                'Content-Type' => 'application/json',
-                'Authorization' => $key,
-            ])->get($this->baseUrl . '/v1/couriers');
+            $response = $this->client($key)->get($this->baseUrl . '/v1/couriers');
 
             if ($response->successful() && $response->json('success')) {
                 $couriers = $response->json('couriers', []);
@@ -88,6 +85,22 @@ class BiteshipService
             'Content-Type' => 'application/json',
             'Authorization' => $this->apiKey,
         ];
+    }
+
+    protected function client(?string $apiKey = null)
+    {
+        return Http::withHeaders([
+            'Content-Type' => 'application/json',
+            'Authorization' => $apiKey ?: $this->apiKey,
+            'User-Agent' => 'PutriJayaMobil/1.0',
+        ])
+        ->timeout(30)
+        ->connectTimeout(15)
+        ->withOptions([
+            'curl' => [
+                CURLOPT_IPRESOLVE => CURL_IPRESOLVE_V4,
+            ],
+        ]);
     }
 
     /**
@@ -149,7 +162,7 @@ class BiteshipService
         ];
 
         try {
-            $response = Http::withHeaders($this->getHeaders())
+            $response = $this->client()
                 ->post($this->baseUrl . '/v1/rates/couriers', $params);
 
             if ($response->failed()) {
@@ -274,7 +287,7 @@ class BiteshipService
         }
 
         try {
-            $response = Http::withHeaders($this->getHeaders())
+            $response = $this->client()
                 ->post($this->baseUrl . '/v1/orders', $params);
 
             if ($response->failed()) {
@@ -311,7 +324,7 @@ class BiteshipService
         }
 
         try {
-            $response = Http::withHeaders($this->getHeaders())
+            $response = $this->client()
                 ->get($this->baseUrl . "/v1/trackings/{$waybill}/couriers/" . strtolower($courier));
 
             if ($response->failed()) {
@@ -347,7 +360,7 @@ class BiteshipService
         }
 
         try {
-            $response = Http::withHeaders($this->getHeaders())
+            $response = $this->client()
                 ->get($this->baseUrl . "/v1/orders/{$biteshipOrderId}");
 
             if ($response->failed()) {
@@ -383,7 +396,7 @@ class BiteshipService
         }
 
         try {
-            $response = Http::withHeaders($this->getHeaders())
+            $response = $this->client()
                 ->post($this->baseUrl . "/v1/orders/{$biteshipOrderId}/cancellation", [
                     'reason' => $reason,
                 ]);
@@ -419,7 +432,7 @@ class BiteshipService
         }
 
         try {
-            $response = Http::withHeaders($this->getHeaders())
+            $response = $this->client()
                 ->get($this->baseUrl . '/v1/couriers');
 
             if ($response->failed()) {
