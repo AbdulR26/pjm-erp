@@ -11,9 +11,15 @@ class Product extends Model
     use HasFactory;
 
     protected $fillable = [
+        'parent_id',
+        'product_type_id',
+        'product_status_id',
         'category_id',
         'name',
         'slug',
+        'sku',
+        'price',
+        'stock',
         'description',
         'main_image',
         'badge',
@@ -30,6 +36,8 @@ class Product extends Model
     ];
 
     protected $casts = [
+        'price' => 'float',
+        'stock' => 'integer',
         'attributes' => 'array',
         'is_flash_sale' => 'boolean',
         'rating' => 'float',

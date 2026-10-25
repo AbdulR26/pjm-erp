@@ -25,6 +25,14 @@ class OlshopManagementController extends Controller
         }
 
         $connectionStatus = $this->manager->testShopConnection($activeShop);
+        $authUrl = null;
+        if ($activeShop === 'shopee') {
+            try {
+                $authUrl = $this->manager->getShopService('shopee')->getAuthUrl(route('admin.olshop.index', ['shop' => 'shopee']));
+            } catch (\Exception $e) {
+                $authUrl = null;
+            }
+        }
         $olshopProducts = $this->manager->getOlshopProducts($activeShop);
         $olshopOrders = $this->manager->getOlshopOrders($activeShop);
 
@@ -34,6 +42,9 @@ class OlshopManagementController extends Controller
             ->orWhere('source', $activeShop)
             ->orderBy('created_at', 'desc')
             ->get();
+
+        // Fetch local categories for mapping
+        $categories = \App\Models\Category::orderBy('name')->get();
 
         $title = 'Manajemen Data Olshop';
         $breadcrumbs = [
@@ -46,15 +57,19 @@ class OlshopManagementController extends Controller
 
     public function cloneProduct(Request $request)
     {
+        @set_time_limit(300);
+
         $request->validate([
             'shop' => 'required|string|in:tokopedia,tiktok,shopee',
             'product_ids' => 'required|array|min:1',
+            'category_id' => 'nullable|exists:product_categories,id',
         ]);
 
         $shop = $request->input('shop');
         $productIds = $request->input('product_ids');
+        $categoryId = $request->filled('category_id') ? (int)$request->input('category_id') : null;
 
-        $result = $this->manager->cloneProducts($shop, $productIds);
+        $result = $this->manager->cloneProducts($shop, $productIds, $categoryId);
 
         return redirect()->back()->with('success', $result['message']);
     }

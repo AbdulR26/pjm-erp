@@ -98,24 +98,59 @@
         </div>
     </div>
 
+    <!-- Connection Status Banner -->
+    <div class="col-12 mb-2">
+        <div class="alert {{ ($connectionStatus['success'] ?? false) ? 'alert-success' : 'alert-warning' }} mb-0 d-flex flex-wrap align-items-center justify-content-between p-1" role="alert">
+            <div class="d-flex align-items-center">
+                <i data-feather="{{ ($connectionStatus['success'] ?? false) ? 'check-circle' : 'alert-triangle' }}" class="mr-1 font-medium-3"></i>
+                <div>
+                    <span class="font-weight-bold">Status API {{ ucfirst($activeShop) }}:</span>
+                    <span>{{ $connectionStatus['message'] ?? 'Status koneksi tidak diketahui.' }}</span>
+                </div>
+            </div>
+            @if($activeShop === 'shopee' && !empty($authUrl))
+                <div class="mt-50 mt-md-0">
+                    <a href="{{ $authUrl }}" target="_blank" class="btn btn-sm btn-danger font-weight-bold shadow-sm" style="background-color: #ee4d2d !important; border-color: #ee4d2d !important;">
+                        <i data-feather="external-link" class="mr-25"></i> Hubungkan Toko Shopee (Authorize)
+                    </a>
+                </div>
+            @endif
+        </div>
+    </div>
+
     <!-- Tables Section -->
     <!-- Left: Clone Products -->
     <div class="col-12 col-xl-6 mb-2">
         <div class="card h-100 mb-0">
-            <div class="card-header border-bottom">
+            <div class="card-header border-bottom d-flex align-items-center justify-content-between">
                 <h4 class="card-title font-weight-bold mb-0">
                     <i data-feather="copy" class="mr-50 text-primary"></i> Clone Produk {{ ucfirst($activeShop) }}
                 </h4>
-                <span class="badge badge-light-primary font-weight-bold">{{ count($olshopProducts) }} Item</span>
+                <div class="d-flex align-items-center">
+                    <span class="badge badge-light-primary font-weight-bold mr-50">{{ count($olshopProducts) }} Item</span>
+                    <a href="{{ route('admin.olshop.index', ['shop' => $activeShop, 'refresh' => 1]) }}" class="btn btn-sm btn-outline-secondary px-50 py-25 font-weight-bold" title="Refresh Data Produk">
+                        <i data-feather="refresh-cw" style="width: 14px; height: 14px;"></i> Refresh
+                    </a>
+                </div>
             </div>
             <div class="card-body pt-1">
                 <form action="{{ route('admin.olshop.clone-product') }}" method="POST">
                     @csrf
                     <input type="hidden" name="shop" value="{{ $activeShop }}">
 
-                    <!-- Search Box -->
-                    <div class="form-group mb-1">
-                        <input type="text" id="search-product-input" class="form-control" placeholder="Cari nama produk atau SKU...">
+                    <!-- Controls: Search & Target Category -->
+                    <div class="row mb-1">
+                        <div class="col-md-7 mb-50 mb-md-0">
+                            <input type="text" id="search-product-input" class="form-control" placeholder="Cari nama produk atau SKU...">
+                        </div>
+                        <div class="col-md-5">
+                            <select name="category_id" class="form-control select2" title="Pilih Kategori ERP">
+                                <option value="">-- Kategori: Otomatis (Shopee) --</option>
+                                @foreach($categories as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
                     </div>
 
                     <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">

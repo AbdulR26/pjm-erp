@@ -52,59 +52,70 @@ class OlshopManagerService
         return $this->getShopService($shop)->testConnection();
     }
 
-    public function cloneProducts(string $shop, array $productIds): array
+    public function cloneProducts(string $shop, array $productIds, ?int $categoryId = null): array
     {
+        @set_time_limit(300);
+
         $allProducts = $this->getOlshopProducts($shop);
         $clonedCount = 0;
         $clonedList = [];
+
+        $targetCategory = $categoryId ? Category::find($categoryId) : null;
 
         foreach ($allProducts as $p) {
             if (!in_array($p['id'], $productIds)) {
                 continue;
             }
 
-            // Find or create default category
-            $categoryName = $p['category'] ?? 'Uncategorized';
-            $category = Category::firstOrCreate(
-                ['name' => $categoryName],
-                ['slug' => Str::slug($categoryName)]
-            );
+            // Find or use target category
+            $category = $targetCategory ?: Category::firstOrCreate(['name' => $p['category'] ?? ucfirst($shop)]);
 
-            $sku = $p['sku'] ?? ('SKU-' . strtoupper(Str::random(6)));
+            $sku = !empty($p['sku']) ? $p['sku'] : ('SHP-' . $p['id']);
 
             // Check if product with SKU already exists in ERP
             $existingProduct = Product::where('sku', $sku)->first();
 
             if ($existingProduct) {
-                // Update existing product stock & price from Olshop
+                // Update existing product price, stock & details
                 $existingProduct->update([
                     'price' => $p['price'],
                     'stock' => $p['stock'],
                     'weight' => $p['weight'] ?? 1000,
-                    'badge' => strtoupper($shop)
                 ]);
+
+                if ($targetCategory && method_exists($existingProduct, 'categories')) {
+                    $existingProduct->categories()->syncWithoutDetaching([$targetCategory->id]);
+                }
+
                 $clonedList[] = $existingProduct->name . " (Diperbarui)";
             } else {
-                // Create new ERP product from Olshop
+                // Create new ERP Product
                 $newProduct = Product::create([
-                    'category_id' => $category->id,
+                    'product_type_id' => 1,
+                    'product_status_id' => 1,
                     'name' => $p['name'],
-                    'slug' => Str::slug($p['name']) . '-' . Str::random(5),
+                    'slug' => Str::slug($p['name']) . '-' . uniqid(),
                     'sku' => $sku,
                     'price' => $p['price'],
                     'stock' => $p['stock'],
+                    'description' => $p['description'] ?? null,
                     'weight' => $p['weight'] ?? 1000,
-                    'description' => $p['description'] ?? '',
-                    'badge' => strtoupper($shop),
-                    'main_image' => $p['image'] ?? null,
-                    'attributes' => [
-                        'source_olshop' => strtolower($shop),
-                        'olshop_product_id' => $p['id']
-                    ]
                 ]);
 
-                // Attach category if relationship table exists
-                if (method_exists($newProduct, 'categories')) {
+                // Download and save image to Cloudflare R2
+                if (!empty($p['image'])) {
+                    $r2Service = app(\App\Services\CloudflareR2Service::class);
+                    $r2Path = $r2Service->uploadFromUrl($p['image'], 'products');
+                    $savedPath = $r2Path ?: $p['image'];
+
+                    \App\Models\ProductImage::create([
+                        'product_id' => $newProduct->id,
+                        'image_path' => $savedPath
+                    ]);
+                }
+
+                // Attach category if pivot exists
+                if ($category && method_exists($newProduct, 'categories')) {
                     $newProduct->categories()->syncWithoutDetaching([$category->id]);
                 }
 
@@ -178,15 +189,20 @@ class OlshopManagerService
 
                 // Create Order Items
                 foreach ($oData['items'] as $item) {
-                    $product = Product::where('sku', $item['sku'])->first();
+                    $product = !empty($item['sku']) ? Product::where('sku', $item['sku'])->first() : null;
+                    $productId = $product ? $product->id : null;
 
                     OrderItem::create([
                         'order_id' => $order->id,
-                        'product_id' => $product ? $product->id : null,
+                        'product_id' => $productId,
                         'product_name' => $item['name'],
+                        'sku' => $item['sku'] ?? '',
                         'price' => (float)$item['price'],
+                        'unit_price' => (float)$item['price'],
                         'quantity' => (int)$item['quantity'],
-                        'total' => (float)$item['price'] * (int)$item['quantity']
+                        'total' => (float)$item['price'] * (int)$item['quantity'],
+                        'total_price' => (float)$item['price'] * (int)$item['quantity'],
+                        'weight' => 1000
                     ]);
                 }
 

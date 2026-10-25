@@ -12,18 +12,7 @@ class Category extends Model
 
     protected $table = 'product_categories';
 
-    protected $fillable = ['parent_id', 'name', 'slug'];
-
-    // Auto-generate slug on creating
-    protected static function boot()
-    {
-        parent::boot();
-        static::creating(function ($category) {
-            if (empty($category->slug)) {
-                $category->slug = Str::slug($category->name);
-            }
-        });
-    }
+    protected $fillable = ['parent_id', 'name', 'status'];
 
     // Get parent category
     public function parent()

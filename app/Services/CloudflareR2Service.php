@@ -33,6 +33,41 @@ class CloudflareR2Service
         return $path;
     }
 
+    public function uploadFromUrl(string $url, string $folder = 'products', ?string $filename = null): ?string
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(6)->get($url);
+            if (!$response->successful()) {
+                return null;
+            }
+
+            $disk = Storage::disk('r2');
+            $extension = 'jpg';
+            $contentType = $response->header('Content-Type');
+            if ($contentType) {
+                if (str_contains($contentType, 'png')) {
+                    $extension = 'png';
+                } elseif (str_contains($contentType, 'webp')) {
+                    $extension = 'webp';
+                } elseif (str_contains($contentType, 'gif')) {
+                    $extension = 'gif';
+                }
+            }
+
+            if (!$filename) {
+                $filename = Str::uuid() . '.' . $extension;
+            }
+
+            $path = rtrim($folder, '/') . '/' . $filename;
+            $disk->put($path, $response->body());
+
+            return $path;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to upload image from URL to R2: ' . $e->getMessage());
+            return null;
+        }
+    }
+
     /**
      * Get the full public URL of a file stored in R2.
      *
